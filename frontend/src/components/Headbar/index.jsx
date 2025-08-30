@@ -5,20 +5,10 @@ export default function Headbar() {
     <header style={styles.headbar}>
       <div style={styles.logo}>Edu-Web</div>
 
-      <nav style={styles.nav}>
-        <a href="#" style={styles.link}>
-          Home
-        </a>
-        <a href="#" style={styles.link}>
-          About
-        </a>
-        <a href="#" style={styles.link}>
-          Services
-        </a>
-        <a href="#" style={styles.link}>
-          Contact
-        </a>
-      </nav>
+      <div style={styles.profile}>
+        <span style={styles.profileName}>John Doe</span>
+        <img src="/img/profile.jpg" alt="Profile" style={styles.profileImage} />
+      </div>
     </header>
   );
 }
@@ -37,13 +27,20 @@ const styles = {
     fontSize: "1.5rem",
     fontWeight: "bold",
   },
-  nav: {
+  profile: {
     display: "flex",
-    gap: "20px",
+    alignItems: "center",
+    gap: "10px",
   },
-  link: {
-    color: "white",
-    textDecoration: "none",
+  profileImage: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "50%",
+    objectFit: "cover",
+  },
+  profileName: {
     fontSize: "1rem",
+    fontWeight: "500",
+    marginRight: "8px",
   },
 };
