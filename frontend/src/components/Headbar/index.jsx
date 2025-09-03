@@ -3,8 +3,6 @@ import React from "react";
 export default function Headbar() {
   return (
     <header style={styles.headbar}>
-      <div style={styles.logo}>Edu-Web</div>
-
       <div style={styles.profile}>
         <span style={styles.profileName}>John Doe</span>
         <img src="/img/profile.jpg" alt="Profile" style={styles.profileImage} />
@@ -16,16 +14,17 @@ export default function Headbar() {
 const styles = {
   headbar: {
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     alignItems: "center",
     padding: "12px 24px",
     backgroundColor: "#2c3e50",
     color: "white",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-  },
-  logo: {
-    fontSize: "1.5rem",
-    fontWeight: "bold",
+    position: "fixed",
+    top: 0,
+    left: "250px",
+    right: 0,
+    height: "60px",
+    zIndex: 999,
   },
   profile: {
     display: "flex",
