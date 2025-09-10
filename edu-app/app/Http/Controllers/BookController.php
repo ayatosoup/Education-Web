@@ -3,22 +3,23 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Book;
+use App\Models\BookPage;
 
 class BookController extends Controller
 {
     // GET /api/books - Get all books
     public function index()
     {
-        $books = DB::table('books')->orderBy('created_at', 'desc')->get();
+       $books = Book::with('pages')->orderBy('upload_date', 'desc')->get();
         return response()->json($books);
     }
 
     // GET /api/books/{id} - Get single book
     public function show($id)
     {
-        $book = DB::table('books')->where('idbook', $id)->first();
+        $book = Book::with('pages')->find($id);
         
         if (!$book) {
             return response()->json(['error' => 'Book not found'], 404);
@@ -32,34 +33,61 @@ class BookController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'genre' => 'nullable|string|max:100',
+            'field' => 'nullable|string|max:100',
             'pdf_file' => 'required|mimes:pdf|max:10240' // 10MB max
         ]);
 
-        try {
-            // Handle file upload
-            $filePath = null;
-            if ($request->hasFile('pdf_file')) {
-                $file = $request->file('pdf_file');
-                $fileName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $file->getClientOriginalName());
-                $file->move(public_path('books'), $fileName);
-                $filePath = '/books/' . $fileName;
-            }
+         try {
+            // Save pdf in storage
+            $pdfFile = $request->file('pdf_file');
+            $pdfName = time().'_'.$pdfFile->getClientOriginalName();
+            $pdfPath = $pdfFile->storeAs('books', $pdfName);
 
-            // Insert into database
-            $bookId = DB::table('books')->insertGetId([
+            $book = Book::create([
                 'title' => $request->title,
-                'genre' => $request->genre,
-                'file' => $filePath,
-                'created_at' => now()
+                'description' => $request->description,
+                'original_file_path' => $pdfPath,
+                'upload_date' => now(),
             ]);
 
-            // Get the created book
-            $book = DB::table('books')->where('idbook', $bookId)->first();
+           // Process PDF into image pages
+            $imagick = new \Imagick();
+            $imagick->setResolution(150, 150);
+            
+            // Fix the file path for Windows compatibility
+            $fullPath = Storage::path($pdfPath);
+            // Normalize path separators for Windows
+            $fullPath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $fullPath);
+            
+            // Alternative: Use realpath to get absolute path
+            $realPath = realpath($fullPath);
+            if (!$realPath || !file_exists($realPath)) {
+                throw new \Exception("PDF file not found at path: $fullPath");
+            }
+            
+            $imagick->readImage($realPath);
+
+            foreach ($imagick as $index => $image) {
+                $image->setImageFormat('jpg');
+                $pageFileName = 'book_pages/book_'.$book->id.'/page_'.($index+1).'.jpg';
+                
+                // Get the image blob and store it
+                $imageBlob = $image->getImageBlob();
+                Storage::put($pageFileName, $imageBlob);
+
+                BookPage::create([
+                    'book_id' => $book->id,
+                    'page_number' => $index+1,
+                    'page_path' => $pageFileName,
+                ]);
+            }
+
+            $imagick->clear();
+            $imagick->destroy();
 
             return response()->json([
-                'message' => 'Book created successfully',
-                'book' => $book
+                'message' => 'Book uploaded successfully',
+                'book' => $book->load('pages')
             ], 201);
 
         } catch (\Exception $e) {
@@ -72,73 +100,33 @@ class BookController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'genre' => 'nullable|string|max:100',
-            'pdf_file' => 'nullable|mimes:pdf|max:10240'
+            'field' => 'nullable|string|max:100',
         ]);
 
-        $book = DB::table('books')->where('idbook', $id)->first();
-        
-        if (!$book) {
-            return response()->json(['error' => 'Book not found'], 404);
-        }
+        $book = Book::find($id);
+        if (!$book) return response()->json(['error' => 'Book not found'], 404);
 
-        try {
-            $updateData = [
-                'title' => $request->title,
-                'genre' => $request->genre,
-            ];
+          $book->update([
+            'title' => $request->title,
+            'field' => $request->field,
+        ]);
 
-            // Handle file upload if new file provided
-            if ($request->hasFile('pdf_file')) {
-                // Delete old file if exists
-                if ($book->file && file_exists(public_path($book->file))) {
-                    unlink(public_path($book->file));
-                }
-
-                $file = $request->file('pdf_file');
-                $fileName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $file->getClientOriginalName());
-                $file->move(public_path('books'), $fileName);
-                $updateData['file'] = '/books/' . $fileName;
-            }
-
-            // Update database
-            DB::table('books')->where('idbook', $id)->update($updateData);
-
-            // Get updated book
-            $updatedBook = DB::table('books')->where('idbook', $id)->first();
-
-            return response()->json([
-                'message' => 'Book updated successfully',
-                'book' => $updatedBook
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
-        }
+        return response()->json(['message' => 'Book updated successfully', 'book' => $book]);
     }
 
     // DELETE /api/books/{id} - Delete book
     public function destroy($id)
     {
-        $book = DB::table('books')->where('idbook', $id)->first();
-        
-        if (!$book) {
-            return response()->json(['error' => 'Book not found'], 404);
+        $book = Book::with('pages')->find($id);
+        if (!$book) return response()->json(['error' => 'Book not found'], 404);
+
+        Storage::delete($book->original_file_path);
+        foreach ($book->pages as $page) {
+            Storage::delete($page->page_path);
         }
 
-        try {
-            // Delete file if exists
-            if ($book->file && file_exists(public_path($book->file))) {
-                unlink(public_path($book->file));
-            }
+        $book->delete();
 
-            // Delete from database
-            DB::table('books')->where('idbook', $id)->delete();
-
-            return response()->json(['message' => 'Book deleted successfully']);
-
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
-        }
+        return response()->json(['message' => 'Book deleted successfully']);
     }
 }
