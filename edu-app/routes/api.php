@@ -6,7 +6,6 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\AuthController;
 
-// user routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 Route::get('/users', [UserController::class, 'index']);          
@@ -15,12 +14,16 @@ Route::post('/users', [UserController::class, 'store']);
 Route::put('/users/{id}', [UserController::class, 'update']);    
 Route::delete('/users/{id}', [UserController::class, 'destroy']); 
 
-// CRUD routes for books
 Route::get('/books', [BookController::class, 'index']);
 Route::get('/books/{id}', [BookController::class, 'show']);
 Route::post('/books', [BookController::class, 'store']);
 Route::put('/books/{id}', [BookController::class, 'update']);
 Route::delete('/books/{id}', [BookController::class, 'destroy']);
+
+Route::get('/user-book-pages/{userId}/{bookId}', [UserBookPageController::class, 'getUserBookPages']);
+Route::post('/user-book-pages', [UserBookPageController::class, 'store']);
+Route::put('/user-book-pages/{id}', [UserBookPageController::class, 'update']);
+Route::delete('/user-book-pages/{id}', [UserBookPageController::class, 'destroy']);
 
 Route::get('/user', function (Request $request) {
     return $request->user();
