@@ -157,3 +157,4 @@ public function update(Request $request, $id)
         return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
     }
 }
+}
