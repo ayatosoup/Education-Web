@@ -1,16 +1,29 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import authService from "../../services/authService";
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleNavigation = (path) => {
     navigate(path);
   };
 
-  const handleLogout = () => {
-    navigate("/");
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+
+    try {
+      await authService.logout();
+
+      // Navigate to login page
+      navigate("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const isActive = (path) => location.pathname === path;
@@ -37,8 +50,15 @@ export default function Sidebar() {
         </button>
       </nav>
 
-      <button onClick={handleLogout} style={styles.logoutButton}>
-        Logout
+      <button
+        onClick={handleLogout}
+        style={{
+          ...styles.logoutButton,
+          ...(isLoggingOut ? styles.logoutButtonDisabled : {}),
+        }}
+        disabled={isLoggingOut}
+      >
+        {isLoggingOut ? "Logging out..." : "Logout"}
       </button>
     </aside>
   );
@@ -108,5 +128,9 @@ const styles = {
     cursor: "pointer",
     borderRadius: "6px",
     transition: "background 0.2s ease",
+  },
+  logoutButtonDisabled: {
+    opacity: "0.6",
+    cursor: "not-allowed",
   },
 };
