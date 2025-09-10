@@ -15,7 +15,8 @@ class Book extends Model
         'title',
         'field',
         'original_file_path',
-        'upload_date'
+        'upload_date',
+        'cover_path'
     ];
 
     public $timestamps = false;

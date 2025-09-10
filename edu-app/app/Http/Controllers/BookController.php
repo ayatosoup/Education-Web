@@ -9,75 +9,78 @@ use App\Models\BookPage;
 
 class BookController extends Controller
 {
-    // GET /api/books - Get all books
+    // GET /api/books
     public function index()
     {
-       $books = Book::with('pages')->orderBy('upload_date', 'desc')->get();
+        $books = Book::with('pages')->orderBy('upload_date', 'desc')->get();
         return response()->json($books);
     }
 
-    // GET /api/books/{id} - Get single book
+    // GET /api/books/{id}
     public function show($id)
     {
         $book = Book::with('pages')->find($id);
-        
-        if (!$book) {
-            return response()->json(['error' => 'Book not found'], 404);
-        }
-        
+        if (!$book) return response()->json(['error' => 'Book not found'], 404);
         return response()->json($book);
     }
 
-    // POST /api/books - Create new book
+    // POST /api/books
     public function store(Request $request)
     {
         $request->validate([
             'title' => 'required|string|max:255',
             'field' => 'nullable|string|max:100',
-            'pdf_file' => 'required|mimes:pdf|max:10240' // 10MB max
+            'pdf_file' => 'required|mimes:pdf|max:10240'
         ]);
 
-         try {
-            // Save pdf in storage
+        try {
+            // 1️⃣ Save PDF file
             $pdfFile = $request->file('pdf_file');
-            $pdfName = time().'_'.$pdfFile->getClientOriginalName();
+            $pdfName = time() . '_' . $pdfFile->getClientOriginalName();
             $pdfPath = $pdfFile->storeAs('books', $pdfName);
+            $fullPath = Storage::path($pdfPath);
 
+            // 2️⃣ Generate first page as cover
+            $imagick = new \Imagick();
+            $imagick->setResolution(150, 150);
+            $imagick->readImage($fullPath);
+
+            $imagick->setIteratorIndex(0); // first page
+            $coverImage = $imagick->getImage();
+            $coverImage->setImageFormat('jpg');
+
+            $coverPath = 'book_covers/book_' . time() . '_cover.jpg';
+            Storage::put($coverPath, $coverImage->getImageBlob());
+
+            $imagick->clear();
+            $imagick->destroy();
+
+            // 3️⃣ Create book record
             $book = Book::create([
                 'title' => $request->title,
                 'description' => $request->description,
                 'original_file_path' => $pdfPath,
+                'cover_path' => $coverPath,
                 'upload_date' => now(),
             ]);
 
-           // Process PDF into image pages
+            // 4️⃣ Generate all pages
             $imagick = new \Imagick();
             $imagick->setResolution(150, 150);
-            
-            // Fix the file path for Windows compatibility
-            $fullPath = Storage::path($pdfPath);
-            // Normalize path separators for Windows
-            $fullPath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $fullPath);
-            
-            // Alternative: Use realpath to get absolute path
-            $realPath = realpath($fullPath);
-            if (!$realPath || !file_exists($realPath)) {
-                throw new \Exception("PDF file not found at path: $fullPath");
-            }
-            
-            $imagick->readImage($realPath);
+            $imagick->readImage($fullPath);
+            $totalPages = $imagick->getNumberImages();
 
-            foreach ($imagick as $index => $image) {
+            for ($i = 0; $i < $totalPages; $i++) {
+                $imagick->setIteratorIndex($i);
+                $image = $imagick->getImage();
                 $image->setImageFormat('jpg');
-                $pageFileName = 'book_pages/book_'.$book->id.'/page_'.($index+1).'.jpg';
-                
-                // Get the image blob and store it
-                $imageBlob = $image->getImageBlob();
-                Storage::put($pageFileName, $imageBlob);
+
+                $pageFileName = 'book_pages/book_' . $book->id . '/page_' . ($i + 1) . '.jpg';
+                Storage::put($pageFileName, $image->getImageBlob());
 
                 BookPage::create([
                     'book_id' => $book->id,
-                    'page_number' => $index+1,
+                    'page_number' => $i + 1,
                     'page_path' => $pageFileName,
                 ]);
             }
@@ -95,7 +98,7 @@ class BookController extends Controller
         }
     }
 
-    // PUT /api/books/{id} - Update book
+    // PUT /api/books/{id}
     public function update(Request $request, $id)
     {
         $request->validate([
@@ -106,7 +109,7 @@ class BookController extends Controller
         $book = Book::find($id);
         if (!$book) return response()->json(['error' => 'Book not found'], 404);
 
-          $book->update([
+        $book->update([
             'title' => $request->title,
             'field' => $request->field,
         ]);
@@ -114,15 +117,22 @@ class BookController extends Controller
         return response()->json(['message' => 'Book updated successfully', 'book' => $book]);
     }
 
-    // DELETE /api/books/{id} - Delete book
+    // DELETE /api/books/{id}
     public function destroy($id)
     {
         $book = Book::with('pages')->find($id);
         if (!$book) return response()->json(['error' => 'Book not found'], 404);
 
         Storage::delete($book->original_file_path);
+
+        // Delete pages
         foreach ($book->pages as $page) {
             Storage::delete($page->page_path);
+        }
+
+        // Delete cover
+        if ($book->cover_path) {
+            Storage::delete($book->cover_path);
         }
 
         $book->delete();
