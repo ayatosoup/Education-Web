@@ -9,7 +9,6 @@ use App\Http\Controllers\UploadController;
 //     return view('welcome');
 // });
 
-Route::get('/users', [UserController::class, 'index']);
 Route::get('/upload-pdf', [UploadController::class, 'showForm'])->name('upload.form');
 Route::post('/upload-pdf', [UploadController::class, 'handleUpload'])->name('upload.submit');
 
