@@ -10,7 +10,7 @@ class BookController extends Controller
 {
     public function index()
     {
-        $books = DB::table('books')->orderBy('created_at', 'desc')->get();
+        $books = DB::table('books')->orderBy('upload_date', 'desc')->get();
         return response()->json($books);
     }
 
