@@ -8,84 +8,97 @@ use Illuminate\Support\Facades\Storage;
 
 class BookController extends Controller
 {
-    // List all books
+    // Get all books ordered by latest upload date.
     public function index()
     {
-        $books = DB::table('books')->orderBy('upload_date', 'desc')->get();
+        $books = DB::table('books')
+            ->orderBy('upload_date', 'desc')
+            ->get();
+
         return response()->json($books);
     }
 
-    // Show single book
+    
+    // Get a single book and its pages.
     public function show($id)
     {
         $book = DB::table('books')->where('id', $id)->first();
-        if (!$book) {
+
+        if (! $book) {
             return response()->json(['error' => 'Book not found'], 404);
         }
+
+        $book->pages = DB::table('book_pages')
+            ->where('book_id', $id)
+            ->orderBy('page_number', 'asc')
+            ->get();
+
         return response()->json($book);
     }
 
-    // Store new book with PDF and pages
+    // Upload a new book PDF and generate page images.
     public function store(Request $request)
     {
         $request->validate([
-            'title' => 'required|string|max:255',
+            'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
-            'pdf_file' => 'required|mimes:pdf|max:10240',
-            'uploaded_by' => 'required|integer|exists:users,id'
+            'pdf_file'    => 'required|mimes:pdf|max:10240',
+            'uploaded_by' => 'required|integer|exists:users,id',
         ]);
 
+        $bookId = null; 
+
         try {
-            // Insert book first to get ID
+            // Insert the book first to get its ID
             $bookId = DB::table('books')->insertGetId([
-                'title' => $request->title,
-                'description' => $request->description,
-                'original_file_path' => '', 
-                'uploaded_by' => $request->uploaded_by,
-                'upload_date' => now()
+                'title'              => $request->title,
+                'description'        => $request->description,
+                'original_file_path' => '',
+                'uploaded_by'        => $request->uploaded_by,
+                'upload_date'        => now(),
             ]);
 
-            // Define directories
-            $bookFolder = "private/book_{$bookId}";
-            $pdfFolder = storage_path("app/$bookFolder/books");
-            $pagesFolder = storage_path("app/$bookFolder/book_pages");
+            $bookFolder  = "book_{$bookId}";
+            $pdfFolder   = "{$bookFolder}/books";
+            $pagesFolder = "{$bookFolder}/book_pages";
 
-            // Make sure folders exist
-            if (!file_exists($pdfFolder)) mkdir($pdfFolder, 0777, true);
-            if (!file_exists($pagesFolder)) mkdir($pagesFolder, 0777, true);
-
-            // Save PDF
-            $file = $request->file('pdf_file');
+            // Save the uploaded PDF
+            $file     = $request->file('pdf_file');
             $baseName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
             $baseName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $baseName);
             $fileName = time() . '_' . $baseName . '.pdf';
-            $fullPdfPath = $pdfFolder . '/' . $fileName;
-            $file->move($pdfFolder, $fileName);
 
-            // Update book with actual PDF path 
-            DB::table('books')->where('id', $bookId)->update([
-                'original_file_path' => "$bookFolder/books/$fileName"
-            ]);
+            $pdfPath = $file->storeAs($pdfFolder, $fileName, 'local');
 
-            // Extract PDF pages
+            // Update the record with the stored PDF path
+            DB::table('books')->where('id', $bookId)
+                ->update(['original_file_path' => $pdfPath]);
+
+            // Convert each PDF page to a JPG image
             $imagick = new \Imagick();
             $imagick->setResolution(200, 200);
-            $imagick->readImage($fullPdfPath);
+            $imagick->readImage(Storage::disk('local')->path($pdfPath));
 
             foreach ($imagick as $index => $image) {
-                $pageNumber = $index + 1;
-                $image->setImageFormat('jpg');
-                $pageFile = "page_{$pageNumber}.jpg";
-                $pageFullPath = $pagesFolder . '/' . $pageFile;
+                $pageNumber   = $index + 1;
+                $pageFile     = "page_{$pageNumber}.jpg";
+                $pageFullPath = Storage::disk('local')->path("{$pagesFolder}/{$pageFile}");
 
+
+                $pageDirectory = dirname($pageFullPath);
+                if (!is_dir($pageDirectory)) {
+                    mkdir($pageDirectory, 0755, true);
+                }
+
+                $image->setImageFormat('jpg');
                 $image->writeImage($pageFullPath);
 
                 DB::table('book_pages')->insert([
-                    'book_id' => $bookId,
+                    'book_id'     => $bookId,
                     'page_number' => $pageNumber,
-                    'page_path' => "$bookFolder/book_pages/$pageFile",
-                    'created_at' => now(),
-                    'updated_at' => now()
+                    'page_path'   => "{$pagesFolder}/{$pageFile}",
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
                 ]);
             }
 
@@ -94,83 +107,88 @@ class BookController extends Controller
 
             return response()->json([
                 'message' => 'Book uploaded successfully',
-                'book_id' => $bookId
+                'book_id' => $bookId,
             ], 201);
 
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Upload failed: ' . $e->getMessage()], 500);
+            if ($bookId) {
+                Storage::disk('local')->deleteDirectory("book_{$bookId}");
+                DB::table('books')->where('id', $bookId)->delete();
+                DB::table('book_pages')->where('book_id', $bookId)->delete();
+            }
+
+            return response()->json([
+                'error' => 'Upload failed: ' . $e->getMessage(),
+            ], 500);
         }
     }
 
-    // Update book (title, description, optionally PDF)
+    // Update book, add audio/video link
     public function update(Request $request, $id)
     {
         $request->validate([
-            'title' => 'required|string|max:255',
+            'title'       => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
-            'pdf_file' => 'nullable|mimes:pdf|max:10240'
+            'pdf_file'    => 'nullable|mimes:pdf|max:10240',
+            'page_number' => 'nullable|integer|required_with:audio_file,video_link',
+            'audio_file'  => 'nullable|mimes:mp3,wav,m4a,ogg|max:20480',
+            'video_link'  => 'nullable|url|string|max:500',
         ]);
 
         $book = DB::table('books')->where('id', $id)->first();
-        if (!$book) {
+
+        if (! $book) {
             return response()->json(['error' => 'Book not found'], 404);
         }
 
         try {
-            $updateData = [
-                'title' => $request->title,
-                'description' => $request->description,
-            ];
+            $updateData = $request->only(['title', 'description']);
 
             if ($request->hasFile('pdf_file')) {
-                // Delete old PDF
-                $oldPdfPath = storage_path("app/{$book->original_file_path}");
-                if (file_exists($oldPdfPath)) unlink($oldPdfPath);
-
-                // Delete old pages
-                $oldPages = DB::table('book_pages')->where('book_id', $id)->get();
-                foreach ($oldPages as $page) {
-                    $oldPagePath = storage_path("app/{$page->page_path}");
-                    if (file_exists($oldPagePath)) unlink($oldPagePath);
+                // Remove old PDF and page images
+                if ($book->original_file_path) {
+                    Storage::disk('local')->delete($book->original_file_path);
                 }
+                
+                Storage::disk('local')->deleteDirectory("book_{$id}/book_pages");
                 DB::table('book_pages')->where('book_id', $id)->delete();
 
-                // Directories
-                $bookFolder = "private/book_{$id}";
-                $pdfFolder = storage_path("app/$bookFolder/books");
-                $pagesFolder = storage_path("app/$bookFolder/book_pages");
-                if (!file_exists($pdfFolder)) mkdir($pdfFolder, 0777, true);
-                if (!file_exists($pagesFolder)) mkdir($pagesFolder, 0777, true);
+                $bookFolder  = "book_{$id}";
+                $pdfFolder   = "{$bookFolder}/books";
+                $pagesFolder = "{$bookFolder}/book_pages";
 
-                // Save new PDF
-                $file = $request->file('pdf_file');
+                $file     = $request->file('pdf_file');
                 $baseName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
                 $baseName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $baseName);
                 $fileName = time() . '_' . $baseName . '.pdf';
-                $fullPdfPath = $pdfFolder . '/' . $fileName;
-                $file->move($pdfFolder, $fileName);
 
-                $updateData['original_file_path'] = "$bookFolder/books/$fileName";
+                $pdfPath = $file->storeAs($pdfFolder, $fileName, 'local');
+                $updateData['original_file_path'] = $pdfPath;
 
-                // Extract pages
                 $imagick = new \Imagick();
                 $imagick->setResolution(200, 200);
-                $imagick->readImage($fullPdfPath);
+                $imagick->readImage(Storage::disk('local')->path($pdfPath));
 
                 foreach ($imagick as $index => $image) {
-                    $pageNumber = $index + 1;
-                    $image->setImageFormat('jpg');
-                    $pageFile = "page_{$pageNumber}.jpg";
-                    $pageFullPath = $pagesFolder . '/' . $pageFile;
+                    $pageNumber   = $index + 1;
+                    $pageFile     = "page_{$pageNumber}.jpg";
+                    $pageFullPath = Storage::disk('local')->path("{$pagesFolder}/{$pageFile}");
 
+                    
+                    $pageDirectory = dirname($pageFullPath);
+                    if (!is_dir($pageDirectory)) {
+                        mkdir($pageDirectory, 0755, true);
+                    }
+
+                    $image->setImageFormat('jpg');
                     $image->writeImage($pageFullPath);
 
                     DB::table('book_pages')->insert([
-                        'book_id' => $id,
+                        'book_id'     => $id,
                         'page_number' => $pageNumber,
-                        'page_path' => "$bookFolder/book_pages/$pageFile",
-                        'created_at' => now(),
-                        'updated_at' => now()
+                        'page_path'   => "{$pagesFolder}/{$pageFile}",
+                        'created_at'  => now(),
+                        'updated_at'  => now(),
                     ]);
                 }
 
@@ -178,16 +196,59 @@ class BookController extends Controller
                 $imagick->destroy();
             }
 
-            DB::table('books')->where('id', $id)->update($updateData);
+            // Handle optional page-specific audio/video
+            if ($request->filled('page_number')) {
+                $page = DB::table('book_pages')
+                    ->where('book_id', $id)
+                    ->where('page_number', $request->page_number)
+                    ->first();
+
+                if (! $page) {
+                    return response()->json([
+                        'error' => 'Page number ' . $request->page_number . ' not found for this book.'
+                    ], 404);
+                }
+
+                $pageUpdateData = [];
+
+                if ($request->hasFile('audio_file')) {
+                    if ($page->audio_path && Storage::disk('local')->exists($page->audio_path)) {
+                        Storage::disk('local')->delete($page->audio_path);
+                    }
+                   
+                    $audioFolder = "book_{$id}/audio_file";
+                    $audioFile   = $request->file('audio_file');
+                    $audioName   = 'page_' . $request->page_number . '_' . time() . '.' . $audioFile->getClientOriginalExtension();
+                    $path = $audioFile->storeAs($audioFolder, $audioName, 'local');
+                    $pageUpdateData['audio_path'] = $path;
+                }
+
+                if ($request->has('video_link')) {
+                    $pageUpdateData['video_link'] = $request->video_link;
+                }
+
+                if (! empty($pageUpdateData)) {
+                    $pageUpdateData['updated_at'] = now();
+                    DB::table('book_pages')->where('id', $page->id)->update($pageUpdateData);
+                }
+            }
+
+            if (! empty($updateData)) {
+                DB::table('books')->where('id', $id)->update($updateData);
+            }
 
             $updatedBook = DB::table('books')->where('id', $id)->first();
+
             return response()->json([
                 'message' => 'Book updated successfully',
-                'book' => $updatedBook
+                'book'    => $updatedBook,
             ]);
 
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
+            return response()->json([
+                'error' => 'Update failed: ' . $e->getMessage(),
+            ], 500);
         }
     }
 }
+
