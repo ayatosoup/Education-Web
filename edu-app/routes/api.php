@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\BookTocController;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
@@ -13,6 +15,9 @@ Route::get('/users/{id}', [UserController::class, 'show']);
 Route::post('/users', [UserController::class, 'store']);         
 Route::put('/users/{id}', [UserController::class, 'update']);    
 Route::delete('/users/{id}', [UserController::class, 'destroy']); 
+Route::post('/users/give-book-access', [UserController::class, 'giveBookAccess']);
+Route::post('/users/remove-book-access', [UserController::class, 'removeBookAccess']);
+Route::get('/users/{id}/books', [UserController::class, 'listUserBooks']);
 
 Route::get('/books', [BookController::class, 'index']);
 Route::get('/books/{id}', [BookController::class, 'show']);
@@ -24,6 +29,18 @@ Route::get('/user-book-pages/{userId}/{bookId}', [UserBookPageController::class,
 Route::post('/user-book-pages', [UserBookPageController::class, 'store']);
 Route::put('/user-book-pages/{id}', [UserBookPageController::class, 'update']);
 Route::delete('/user-book-pages/{id}', [UserBookPageController::class, 'destroy']);
+
+Route::get('/categories',        [CategoryController::class, 'index']);
+Route::get('/categories/{id}',   [CategoryController::class, 'show']);
+Route::post('/categories',       [CategoryController::class, 'store']);
+Route::put('/categories/{id}',   [CategoryController::class, 'update']);
+Route::delete('/categories/{id}',[CategoryController::class, 'destroy']);
+
+Route::get('/books/{book}/toc',        [BookTocController::class, 'index']);
+Route::post('/books/{book}/toc',       [BookTocController::class, 'store']);
+Route::put('/books/{book}/toc/{toc}',  [BookTocController::class, 'update']);
+Route::delete('/books/{book}/toc/{toc}', [BookTocController::class, 'destroy']);
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();

@@ -8,23 +8,28 @@ use Illuminate\Support\Facades\Storage;
 
 class BookController extends Controller
 {
-    // Get all books ordered by latest upload date.
+    // Get all books with their category name, ordered by latest upload date.
     public function index()
     {
         $books = DB::table('books')
+            ->join('categories', 'books.category_id', '=', 'categories.id')
+            ->select('books.*', 'categories.name as category_name')
             ->orderBy('upload_date', 'desc')
             ->get();
 
         return response()->json($books);
     }
 
-    
-    // Get a single book and its pages.
+    // Get a single book, its category and its pages.
     public function show($id)
     {
-        $book = DB::table('books')->where('id', $id)->first();
+        $book = DB::table('books')
+            ->join('categories', 'books.category_id', '=', 'categories.id')
+            ->select('books.*', 'categories.name as category_name')
+            ->where('books.id', $id)
+            ->first();
 
-        if (! $book) {
+        if (!$book) {
             return response()->json(['error' => 'Book not found'], 404);
         }
 
@@ -40,19 +45,21 @@ class BookController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'title'       => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'pdf_file'    => 'required|mimes:pdf|max:10240',
-            'uploaded_by' => 'required|integer|exists:users,id',
+            'title'        => 'required|string|max:255',
+            'description'  => 'nullable|string',
+            'pdf_file'     => 'required|mimes:pdf|max:10240',
+            'uploaded_by'  => 'required|integer|exists:users,id',
+            'category_id'  => 'required|integer|exists:categories,id',
         ]);
 
-        $bookId = null; 
+        $bookId = null;
 
         try {
             // Insert the book first to get its ID
             $bookId = DB::table('books')->insertGetId([
                 'title'              => $request->title,
                 'description'        => $request->description,
+                'category_id'        => $request->category_id,
                 'original_file_path' => '',
                 'uploaded_by'        => $request->uploaded_by,
                 'upload_date'        => now(),
@@ -83,7 +90,6 @@ class BookController extends Controller
                 $pageNumber   = $index + 1;
                 $pageFile     = "page_{$pageNumber}.jpg";
                 $pageFullPath = Storage::disk('local')->path("{$pagesFolder}/{$pageFile}");
-
 
                 $pageDirectory = dirname($pageFullPath);
                 if (!is_dir($pageDirectory)) {
@@ -123,33 +129,34 @@ class BookController extends Controller
         }
     }
 
-    // Update book, add audio/video link
+    // Update book, optionally replace PDF and/or change category
     public function update(Request $request, $id)
     {
         $request->validate([
-            'title'       => 'sometimes|required|string|max:255',
-            'description' => 'nullable|string',
-            'pdf_file'    => 'nullable|mimes:pdf|max:10240',
-            'page_number' => 'nullable|integer|required_with:audio_file,video_link',
-            'audio_file'  => 'nullable|mimes:mp3,wav,m4a,ogg|max:20480',
-            'video_link'  => 'nullable|url|string|max:500',
+            'title'        => 'sometimes|required|string|max:255',
+            'description'  => 'nullable|string',
+            'pdf_file'     => 'nullable|mimes:pdf|max:10240',
+            'page_number'  => 'nullable|integer|required_with:audio_file,video_link',
+            'audio_file'   => 'nullable|mimes:mp3,wav,m4a,ogg|max:20480',
+            'video_link'   => 'nullable|url|string|max:500',
+            'category_id'  => 'sometimes|required|integer|exists:categories,id',
         ]);
 
         $book = DB::table('books')->where('id', $id)->first();
 
-        if (! $book) {
+        if (!$book) {
             return response()->json(['error' => 'Book not found'], 404);
         }
 
         try {
-            $updateData = $request->only(['title', 'description']);
+            $updateData = $request->only(['title', 'description', 'category_id']);
 
             if ($request->hasFile('pdf_file')) {
                 // Remove old PDF and page images
                 if ($book->original_file_path) {
                     Storage::disk('local')->delete($book->original_file_path);
                 }
-                
+
                 Storage::disk('local')->deleteDirectory("book_{$id}/book_pages");
                 DB::table('book_pages')->where('book_id', $id)->delete();
 
@@ -174,7 +181,6 @@ class BookController extends Controller
                     $pageFile     = "page_{$pageNumber}.jpg";
                     $pageFullPath = Storage::disk('local')->path("{$pagesFolder}/{$pageFile}");
 
-                    
                     $pageDirectory = dirname($pageFullPath);
                     if (!is_dir($pageDirectory)) {
                         mkdir($pageDirectory, 0755, true);
@@ -215,7 +221,7 @@ class BookController extends Controller
                     if ($page->audio_path && Storage::disk('local')->exists($page->audio_path)) {
                         Storage::disk('local')->delete($page->audio_path);
                     }
-                   
+
                     $audioFolder = "book_{$id}/audio_file";
                     $audioFile   = $request->file('audio_file');
                     $audioName   = 'page_' . $request->page_number . '_' . time() . '.' . $audioFile->getClientOriginalExtension();
@@ -237,7 +243,11 @@ class BookController extends Controller
                 DB::table('books')->where('id', $id)->update($updateData);
             }
 
-            $updatedBook = DB::table('books')->where('id', $id)->first();
+            $updatedBook = DB::table('books')
+                ->join('categories', 'books.category_id', '=', 'categories.id')
+                ->select('books.*', 'categories.name as category_name')
+                ->where('books.id', $id)
+                ->first();
 
             return response()->json([
                 'message' => 'Book updated successfully',
@@ -251,4 +261,3 @@ class BookController extends Controller
         }
     }
 }
-
