@@ -45,3 +45,25 @@ export const getBookById = async (id) => {
     throw error;
   }
 };
+
+export const getMyBooks = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/my-books`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to fetch your books.");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("getMyBooks error:", error);
+    throw error;
+  }
+};

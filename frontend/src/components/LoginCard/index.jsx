@@ -6,7 +6,7 @@ import {
   Paper,
   Typography,
   Alert,
-} from "@mui/material"; // <-- Add this
+} from "@mui/material";
 
 export default function LoginCard({ onLogin, loading, error }) {
   const [email, setEmail] = useState("");

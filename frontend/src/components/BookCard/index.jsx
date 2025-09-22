@@ -1,5 +1,5 @@
-import React from "react";
-import { Card, CardMedia, CardContent, Typography, Box } from "@mui/material";
+import React, { useRef, useEffect } from "react";
+import { Card, CardContent, Typography, Box } from "@mui/material";
 import { Link } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -11,6 +11,31 @@ export default function BookCard({ book }) {
         .split("/")
         .pop()}`
     : "/img/placeholder_cover.jpg";
+
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    // Display image on canvas with high resolution
+    const canvas = canvasRef.current;
+    const context = canvas.getContext("2d");
+
+    const dpr = window.devicePixelRatio || 1;
+
+    const rect = canvas.getBoundingClientRect();
+
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+
+    context.scale(dpr, dpr);
+
+    const image = new Image();
+    image.crossOrigin = "Anonymous";
+    image.src = coverImageUrl;
+    image.onload = () => {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, rect.width, rect.height);
+    };
+  }, [coverImageUrl]);
 
   return (
     <Link to={`/book/${book.id}`} style={{ textDecoration: "none" }}>
@@ -31,11 +56,16 @@ export default function BookCard({ book }) {
           },
         }}
       >
-        <CardMedia
-          component="img"
-          image={coverImageUrl}
-          alt={book.title}
-          sx={{ height: 250, objectFit: "cover" }}
+        <Box
+          component="canvas"
+          ref={canvasRef}
+          width={200}
+          height={250}
+          sx={{
+            display: "block",
+            flexShrink: 0,
+            pointerEvents: "none",
+          }}
         />
         <CardContent
           sx={{
