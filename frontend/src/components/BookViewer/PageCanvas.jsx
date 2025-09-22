@@ -1,6 +1,8 @@
+// PageCanvas.js (Removed the duplicate DraggableAudioPlayer)
 import React, { useEffect, useState } from "react";
 import useDrawing from "./useDrawing"; // Custom drawing hook
 import DraggableAudioPlayer from "./DraggableAudioPlayer";
+import DraggableVideoPlayer from "./DraggableVideoPlayer";
 import { fetchAudio } from "../../services/bookService";
 
 export default function PageCanvas({
@@ -51,7 +53,6 @@ export default function PageCanvas({
     img.src = `${
       import.meta.env.VITE_API_BASE_URL
     }/books/pages/${bookId}/${page.page_path.split("/").pop()}`;
-
     img.onload = () => {
       canvas.width = img.width;
       canvas.height = img.height;
@@ -95,6 +96,13 @@ export default function PageCanvas({
       />
 
       {audioUrl && <DraggableAudioPlayer key={audioUrl} audioSrc={audioUrl} />}
+
+      {page.video_link && (
+        <DraggableVideoPlayer
+          key={page.video_link}
+          videoUrl={page.video_link}
+        />
+      )}
     </div>
   );
 }
