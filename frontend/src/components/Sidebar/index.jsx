@@ -1,5 +1,7 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Box, Button, Typography, Divider, Stack } from "@mui/material";
+import { logout } from "../../services/authService";
 
 export default function Sidebar() {
   const navigate = useNavigate();
@@ -10,103 +12,90 @@ export default function Sidebar() {
   };
 
   const handleLogout = () => {
+    logout();
     navigate("/");
   };
 
   const isActive = (path) => location.pathname === path;
 
   return (
-    <aside style={styles.sidebar}>
-      <div style={styles.logo}>Edu-Web</div>
+    <Box
+      sx={{
+        width: 250,
+        bgcolor: "#2c3e50",
+        color: "white",
+        height: "100vh",
+        position: "fixed",
+        left: 0,
+        top: 0,
+        display: "flex",
+        flexDirection: "column",
+        p: 2,
+        boxShadow: 2,
+        zIndex: 1000,
+      }}
+    >
+      {/* Logo */}
+      <Typography
+        variant="h5"
+        sx={{
+          fontWeight: "bold",
+          mb: 2,
+          textAlign: "center",
+          borderBottom: "1px solid #3f536a",
+          pb: 1,
+        }}
+      >
+        Edu-Web
+      </Typography>
 
-      <nav style={styles.nav}>
-        <button
+      {/* Navigation */}
+      <Stack spacing={1} flex={1} mt={2}>
+        <Button
+          variant={isActive("/books") ? "contained" : "text"}
+          color="primary"
           onClick={() => handleNavigation("/books")}
-          style={isActive("/books") ? styles.navButtonActive : styles.navButton}
+          sx={{
+            justifyContent: "flex-start",
+            bgcolor: isActive("/books") ? "#34495e" : "transparent",
+            "&:hover": { bgcolor: "#3f536a" },
+            borderRadius: 1,
+            textTransform: "none",
+          }}
         >
           Home
-        </button>
+        </Button>
 
-        <button
+        <Button
+          variant={isActive("/account") ? "contained" : "text"}
+          color="primary"
           onClick={() => handleNavigation("/account")}
-          style={
-            isActive("/account") ? styles.navButtonActive : styles.navButton
-          }
+          sx={{
+            justifyContent: "flex-start",
+            bgcolor: isActive("/account") ? "#34495e" : "transparent",
+            "&:hover": { bgcolor: "#3f536a" },
+            borderRadius: 1,
+            textTransform: "none",
+          }}
         >
           Account
-        </button>
-      </nav>
+        </Button>
+      </Stack>
 
-      <button onClick={handleLogout} style={styles.logoutButton}>
+      <Divider sx={{ bgcolor: "#3f536a", my: 2 }} />
+
+      {/* Logout Button */}
+      <Button
+        onClick={handleLogout}
+        sx={{
+          justifyContent: "flex-start",
+          color: "#e74c3c",
+          textTransform: "none",
+          "&:hover": { bgcolor: "#3f536a" },
+        }}
+      >
         Logout
-      </button>
-    </aside>
+      </Button>
+    </Box>
   );
 }
-
-const styles = {
-  sidebar: {
-    width: "250px",
-    backgroundColor: "#2c3e50",
-    color: "white",
-    height: "100vh",
-    position: "fixed",
-    left: 0,
-    top: 0,
-    zIndex: 1000,
-    display: "flex",
-    flexDirection: "column",
-    padding: "20px 0",
-    boxShadow: "2px 0 6px rgba(0,0,0,0.1)",
-  },
-  logo: {
-    fontSize: "1.4rem",
-    fontWeight: "bold",
-    padding: "0 10px 6px",
-    borderBottom: "1px solid #3f536a",
-    textAlign: "center",
-  },
-  nav: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    padding: "20px 0",
-    gap: "8px",
-  },
-  navButton: {
-    padding: "12px 20px",
-    background: "transparent",
-    border: "none",
-    color: "white",
-    fontSize: "1rem",
-    textAlign: "left",
-    cursor: "pointer",
-    borderRadius: "6px",
-    margin: "0 10px",
-    transition: "background 0.2s ease",
-  },
-  navButtonActive: {
-    padding: "12px 20px",
-    backgroundColor: "#34495e",
-    border: "none",
-    color: "white",
-    fontSize: "1rem",
-    textAlign: "left",
-    cursor: "pointer",
-    borderRadius: "6px",
-    margin: "0 10px",
-    transition: "background 0.2s ease",
-  },
-  logoutButton: {
-    padding: "12px 20px",
-    margin: "0 10px",
-    background: "transparent",
-    border: "none",
-    color: "#e74c3c",
-    fontSize: "1rem",
-    textAlign: "left",
-    cursor: "pointer",
-    borderRadius: "6px",
-    transition: "background 0.2s ease",
-  },
-};
