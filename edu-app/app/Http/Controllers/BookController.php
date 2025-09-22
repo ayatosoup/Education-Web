@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 
 class BookController extends Controller
 {
@@ -20,7 +21,7 @@ class BookController extends Controller
         return response()->json($books);
     }
 
-    // Get a single book, its category and its pages.
+    // Get a single book, its pages, AND all its annotations for the user.
     public function show($id)
     {
         $book = DB::table('books')
@@ -37,6 +38,17 @@ class BookController extends Controller
             ->where('book_id', $id)
             ->orderBy('page_number', 'asc')
             ->get();
+        
+        $annotations = DB::table('annotations')
+                            ->where('book_id', $id)
+                            ->where('user_id', Auth::id())
+                            ->get(['page_number', 'annotation_paths'])
+                            ->keyBy('page_number') 
+                            ->map(function ($item) {
+                                return json_decode($item->annotation_paths, true);
+                            });
+
+        $book->annotations = $annotations;
 
         return response()->json($book);
     }
@@ -87,8 +99,8 @@ class BookController extends Controller
             $imagick->readImage(Storage::disk('local')->path($pdfPath));
 
             foreach ($imagick as $index => $image) {
-                $pageNumber   = $index + 1;
-                $pageFile     = "page_{$pageNumber}.jpg";
+                $pageNumber  = $index + 1;
+                $pageFile    = "page_{$pageNumber}.jpg";
                 $pageFullPath = Storage::disk('local')->path("{$pagesFolder}/{$pageFile}");
 
                 $pageDirectory = dirname($pageFullPath);
@@ -133,13 +145,13 @@ class BookController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'title'        => 'sometimes|required|string|max:255',
-            'description'  => 'nullable|string',
-            'pdf_file'     => 'nullable|mimes:pdf|max:10240',
-            'page_number'  => 'nullable|integer|required_with:audio_file,video_link',
-            'audio_file'   => 'nullable|mimes:mp3,wav,m4a,ogg|max:20480',
-            'video_link'   => 'nullable|url|string|max:500',
-            'category_id'  => 'sometimes|required|integer|exists:categories,id',
+            'title'       => 'sometimes|required|string|max:255',
+            'description' => 'nullable|string',
+            'pdf_file'    => 'nullable|mimes:pdf|max:10240',
+            'page_number' => 'nullable|integer|required_with:audio_file,video_link',
+            'audio_file'  => 'nullable|mimes:mp3,wav,m4a,ogg|max:20480',
+            'video_link'  => 'nullable|url|string|max:500',
+            'category_id' => 'sometimes|required|integer|exists:categories,id',
         ]);
 
         $book = DB::table('books')->where('id', $id)->first();
@@ -177,8 +189,8 @@ class BookController extends Controller
                 $imagick->readImage(Storage::disk('local')->path($pdfPath));
 
                 foreach ($imagick as $index => $image) {
-                    $pageNumber   = $index + 1;
-                    $pageFile     = "page_{$pageNumber}.jpg";
+                    $pageNumber  = $index + 1;
+                    $pageFile    = "page_{$pageNumber}.jpg";
                     $pageFullPath = Storage::disk('local')->path("{$pagesFolder}/{$pageFile}");
 
                     $pageDirectory = dirname($pageFullPath);
@@ -223,8 +235,8 @@ class BookController extends Controller
                     }
 
                     $audioFolder = "book_{$id}/audio_file";
-                    $audioFile   = $request->file('audio_file');
-                    $audioName   = 'page_' . $request->page_number . '_' . time() . '.' . $audioFile->getClientOriginalExtension();
+                    $audioFile  = $request->file('audio_file');
+                    $audioName  = 'page_' . $request->page_number . '_' . time() . '.' . $audioFile->getClientOriginalExtension();
                     $path = $audioFile->storeAs($audioFolder, $audioName, 'local');
                     $pageUpdateData['audio_path'] = $path;
                 }
@@ -259,5 +271,58 @@ class BookController extends Controller
                 'error' => 'Update failed: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function servePage($book, $filename)
+    {
+        $path = storage_path("app/private/book_{$book}/book_pages/{$filename}");
+
+        if (!file_exists($path)) {
+            abort(404);
+        }
+
+        return response()->file($path);
+    }
+
+    public function listMyBooks(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated'
+            ], 401);
+        }
+
+        $bookIds = DB::table('book_user_access')
+            ->where('user_id', $user->id)
+            ->pluck('book_id')
+            ->toArray();
+
+        $books = DB::table('books')
+            ->whereIn('id', $bookIds)
+            ->get();
+
+        return response()->json($books);
+    }
+
+    public function serveAudio($book, $filename)
+    {
+        $path = storage_path("app/private/book_{$book}/audio_file/{$filename}");
+
+        if (!file_exists($path)) {
+            return response()->json(['error' => 'Audio file not found at: ' . $path], 404);
+        }
+
+        $mimeType = mime_content_type($path) ?: 'audio/mpeg';
+        $fileSize = filesize($path);
+
+        return response()->file($path, [
+            'Content-Type' => $mimeType,
+            'Content-Length' => $fileSize,
+            'Accept-Ranges' => 'bytes',
+            'Cache-Control' => 'public, max-age=3600'
+        ]);
     }
 }
