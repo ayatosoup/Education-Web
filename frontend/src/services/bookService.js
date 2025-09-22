@@ -67,3 +67,20 @@ export const getMyBooks = async () => {
     throw error;
   }
 };
+
+export const fetchAudio = async (bookId, audioPath) => {
+  const fileName = audioPath.split("/").pop();
+  const url = `${API_BASE_URL}/books/audio/${bookId}/${fileName}`;
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch audio: ${res.status} ${res.statusText}`);
+  }
+
+  return await res.blob();
+};
