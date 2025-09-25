@@ -1,10 +1,21 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { getCurrentUser } from "../../services/authService";
 
 export default function Headbar() {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    // ambil user dari localStorage
+    const currentUser = getCurrentUser();
+    setUser(currentUser);
+  }, []);
+
   return (
     <header style={styles.headbar}>
       <div style={styles.profile}>
-        <span style={styles.profileName}>John Doe</span>
+        <span style={styles.profileName}>
+          {user ? user.name : "User"}
+        </span>
         <img src="/img/profile.jpg" alt="Profile" style={styles.profileImage} />
       </div>
     </header>

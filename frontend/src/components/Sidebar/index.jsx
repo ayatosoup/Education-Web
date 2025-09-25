@@ -1,11 +1,20 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Box, Button, Typography, Divider, Stack } from "@mui/material";
-import { logout } from "../../services/authService";
+import { logout, isAuthenticated, getCurrentUser } from "../../services/authService";
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    if (isAuthenticated()) {
+      setUser(getCurrentUser());
+    } else {
+      setUser(null);
+    }
+  }, [location]); // perbarui saat route berubah
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -13,10 +22,18 @@ export default function Sidebar() {
 
   const handleLogout = () => {
     logout();
+    setUser(null);
     navigate("/");
   };
 
   const isActive = (path) => location.pathname === path;
+
+  const btnStyle = {
+    justifyContent: "flex-start",
+    textTransform: "none",
+    borderRadius: 1,
+    "&:hover": { bgcolor: "#3f536a" },
+  };
 
   return (
     <Box
@@ -55,47 +72,85 @@ export default function Sidebar() {
           variant={isActive("/books") ? "contained" : "text"}
           color="primary"
           onClick={() => handleNavigation("/books")}
-          sx={{
-            justifyContent: "flex-start",
-            bgcolor: isActive("/books") ? "#34495e" : "transparent",
-            "&:hover": { bgcolor: "#3f536a" },
-            borderRadius: 1,
-            textTransform: "none",
-          }}
+          sx={{ ...btnStyle, bgcolor: isActive("/books") ? "#34495e" : "transparent" }}
         >
           Home
         </Button>
 
-        <Button
-          variant={isActive("/account") ? "contained" : "text"}
-          color="primary"
-          onClick={() => handleNavigation("/account")}
-          sx={{
-            justifyContent: "flex-start",
-            bgcolor: isActive("/account") ? "#34495e" : "transparent",
-            "&:hover": { bgcolor: "#3f536a" },
-            borderRadius: 1,
-            textTransform: "none",
-          }}
-        >
-          Account
-        </Button>
+        {user?.role === "admin" && (
+  <>
+    <Button
+      variant={isActive("/upload-book") ? "contained" : "text"}
+      onClick={() => handleNavigation("/upload-book")}
+      sx={{
+        justifyContent: "flex-start",
+        bgcolor: isActive("/upload-book") ? "#34495e" : "transparent",
+        "&:hover": { bgcolor: "#3f536a" },
+        borderRadius: 1,
+        textTransform: "none",
+      }}
+    >
+      Upload Buku
+    </Button>
+
+    <Button
+      variant={isActive("/manage-books") ? "contained" : "text"}
+      onClick={() => handleNavigation("/manage-books")}
+      sx={{
+        justifyContent: "flex-start",
+        bgcolor: isActive("/manage-books") ? "#34495e" : "transparent",
+        "&:hover": { bgcolor: "#3f536a" },
+        borderRadius: 1,
+        textTransform: "none",
+      }}
+    >
+      Manage Buku
+    </Button>
+  </>
+)}
+
+{user?.role === "admin" && (
+  <Button
+    variant={isActive("/user-management") ? "contained" : "text"}
+    onClick={() => handleNavigation("/user-management")}
+    sx={{
+      justifyContent: "flex-start",
+      bgcolor: isActive("/user-management") ? "#34495e" : "transparent",
+      "&:hover": { bgcolor: "#3f536a" },
+      borderRadius: 1,
+      textTransform: "none",
+    }}
+  >
+    User Management
+  </Button>
+)}
+
       </Stack>
 
       <Divider sx={{ bgcolor: "#3f536a", my: 2 }} />
 
-      {/* Logout Button */}
-      <Button
-        onClick={handleLogout}
-        sx={{
-          justifyContent: "flex-start",
-          color: "#e74c3c",
-          textTransform: "none",
-          "&:hover": { bgcolor: "#3f536a" },
-        }}
-      >
-        Logout
-      </Button>
+      {/* User Info or Login/Logout */}
+      {user ? (
+        <Button
+          onClick={handleLogout}
+          sx={{
+            ...btnStyle,
+            color: "#e74c3c",
+          }}
+        >
+          Logout ({user.name})
+        </Button>
+      ) : (
+        <Button
+          onClick={() => navigate("/")}
+          sx={{
+            ...btnStyle,
+            color: "#1abc9c",
+          }}
+        >
+          Login
+        </Button>
+      )}
     </Box>
   );
 }

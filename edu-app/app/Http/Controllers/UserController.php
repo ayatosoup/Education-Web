@@ -1,20 +1,17 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
-
 use App\Models\User;
 
 class UserController extends Controller
 {
     public function index()
     {
-        // Ambil semua data user
         $users = User::all();
-
-        // Kirim sebagai JSON
         return response()->json([
             'success' => true,
             'data' => $users
@@ -23,7 +20,6 @@ class UserController extends Controller
 
     public function show($id)
     {
-        // Ambil data user berdasarkan ID
         $user = User::find($id);
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'User not found'], 404);
@@ -33,7 +29,6 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        //Membuat user baru
         try {
             $user = User::create([
                 'name' => $request->name,
@@ -41,7 +36,6 @@ class UserController extends Controller
                 'password' => Hash::make($request->password),
                 'role' => $request->role
             ]);
-            
             return response()->json(['success' => true, 'data' => $user], 201);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
@@ -50,13 +44,12 @@ class UserController extends Controller
 
     public function update(Request $request, $id)
     {
-        // Perbarui data user berdasarkan ID
         $user = User::find($id);
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'User not found'], 404);
         }
 
-       $user->update([
+        $user->update([
             'name' => $request->name ?? $user->name,
             'email' => $request->email ?? $user->email,
             'password' => $request->password ? Hash::make($request->password) : $user->password,
@@ -66,9 +59,8 @@ class UserController extends Controller
         return response()->json(['success' => true, 'data' => $user]);
     }
 
-     public function destroy($id)
+    public function destroy($id)
     {
-        // Hapus user berdasarkan ID
         $user = User::find($id);
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'User not found'], 404);
@@ -78,53 +70,30 @@ class UserController extends Controller
         return response()->json(['success' => true, 'message' => 'User deleted']);
     }
 
-    // Give a user access to a book
-    public function giveBookAccess(Request $request)
+    public function syncBookAccess(Request $request)
     {
         $request->validate([
             'user_id' => 'required|integer|exists:users,id',
-            'book_id' => 'required|integer'
+            'book_ids' => 'array',
+            'book_ids.*' => 'integer|exists:books,id'
         ]);
 
-        $exists = DB::table('book_user_access')
-            ->where('user_id', $request->user_id)
-            ->where('book_id', $request->book_id)
-            ->exists();
+        DB::table('book_user_access')->where('user_id', $request->user_id)->delete();
 
-        if (!$exists) {
-            DB::table('book_user_access')->insert([
-                'user_id'    => $request->user_id,
-                'book_id'    => $request->book_id,
+        if (!empty($request->book_ids)) {
+            $insertData = collect($request->book_ids)->map(fn ($bookId) => [
+                'user_id' => $request->user_id,
+                'book_id' => $bookId,
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
-            return response()->json(['success' => true, 'message' => 'Access granted.']);
+            ])->toArray();
+
+            DB::table('book_user_access')->insert($insertData);
         }
 
-        return response()->json(['success' => false, 'message' => 'User already has access.']);
+        return response()->json(['success' => true, 'message' => 'Access synchronized.']);
     }
 
-    // Remove a user's access to a book
-    public function removeBookAccess(Request $request)
-    {
-        $request->validate([
-            'user_id' => 'required|integer|exists:users,id',
-            'book_id' => 'required|integer'
-        ]);
-
-        $deleted = DB::table('book_user_access')
-            ->where('user_id', $request->user_id)
-            ->where('book_id', $request->book_id)
-            ->delete();
-
-        if ($deleted) {
-            return response()->json(['success' => true, 'message' => 'Access removed.']);
-        }
-
-        return response()->json(['success' => false, 'message' => 'User did not have access.']);
-    }
-
-    // List all books a user can access
     public function listUserBooks($userId)
     {
         $user = User::find($userId);
@@ -138,5 +107,4 @@ class UserController extends Controller
 
         return response()->json(['success' => true, 'user_id' => $userId, 'books' => $books]);
     }
-
 }

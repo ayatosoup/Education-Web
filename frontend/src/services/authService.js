@@ -16,10 +16,18 @@ export const login = async (email, password) => {
     throw new Error(data.message || "Login failed.");
   }
 
+  // Simpan token
   localStorage.setItem("auth_token", data.token);
 
-  const { id, email: userEmail } = data.user;
-  localStorage.setItem("user", JSON.stringify({ id, email: userEmail }));
+  // Ambil semua field yang dibutuhkan dari user
+  const { id, email: userEmail, name, role } = data.user;
+
+  // Simpan ke localStorage
+  localStorage.setItem(
+    "user",
+    JSON.stringify({ id, email: userEmail, name, role })
+  );
+
   return data;
 };
 

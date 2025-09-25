@@ -10,43 +10,66 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from "@mui/material";
 import BookCard from "../../components/BookCard";
 import { getAllCategories } from "../../services/categoryService";
-import { getMyBooks, getBookById } from "../../services/bookService";
+import { getAllBooks, getMyBooks } from "../../services/bookService";
+import { isAuthenticated, getCurrentUser } from "../../services/authService";
+import { useNavigate } from "react-router-dom";
 
-export default function BookList() {
+export default function HomePage() {
   const [books, setBooks] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [showLoginNotice, setShowLoginNotice] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchData = async () => {
+    async function fetchData() {
       try {
-        const [bookList, categoryList] = await Promise.all([
-          getMyBooks(), // only books the user can access
-          getAllCategories(), // categories for filter
-        ]);
-
-        // fetch detailed info for each book (with pages and category)
-        const detailedBooks = await Promise.all(
-          bookList.map((book) => getBookById(book.id))
-        );
-
-        setBooks(detailedBooks);
+        const categoryList = await getAllCategories();
         setCategories(categoryList);
+
+        if (!isAuthenticated()) {
+          // belum login → lihat semua buku
+          const allBooks = await getAllBooks();
+          setBooks(allBooks);
+        } else {
+          const user = getCurrentUser();
+          if (user?.role === "admin") {
+            // admin login → lihat semua buku
+            const allBooks = await getAllBooks();
+            setBooks(allBooks);
+          } else {
+            // user biasa login → hanya buku dengan akses
+            const myBooks = await getMyBooks();
+            setBooks(myBooks);
+          }
+        }
       } catch (err) {
         setError(err.message || "An error occurred while fetching data.");
       } finally {
         setLoading(false);
       }
-    };
-
+    }
     fetchData();
   }, []);
+
+  const handleBookClick = (bookId) => {
+    if (!isAuthenticated()) {
+      setShowLoginNotice(true);
+    } else {
+      navigate(`/book/${bookId}`);
+    }
+  };
 
   const filteredBooks = books.filter((book) => {
     const matchesSearch = book.title
@@ -62,10 +85,10 @@ export default function BookList() {
     <Box p={3}>
       <Box mb={2}>
         <Typography variant="h4" gutterBottom>
-          Your Book Library
+          Book Library
         </Typography>
         <Typography variant="subtitle1" color="text.secondary">
-          Browse your collection of books below.
+          Browse the collection of books below.
         </Typography>
       </Box>
 
@@ -101,27 +124,52 @@ export default function BookList() {
         </FormControl>
       </Box>
 
-      {loading && (
+      {loading ? (
         <Box display="flex" justifyContent="center" mt={5}>
           <CircularProgress />
         </Box>
-      )}
-
-      {error && (
-        <Box mt={2}>
-          <Alert severity="error">{error}</Alert>
-        </Box>
-      )}
-
-      {!loading && !error && (
+      ) : error ? (
+        <Alert severity="error">{error}</Alert>
+      ) : (
         <Grid container spacing={2}>
           {filteredBooks.map((book) => (
-            <Grid item xs={6} sm={4} md={3} key={book.id}>
+            <Grid
+              item
+              xs={6}
+              sm={4}
+              md={3}
+              key={book.id}
+              onClick={() => handleBookClick(book.id)}
+              style={{ cursor: "pointer" }}
+            >
               <BookCard book={book} />
             </Grid>
           ))}
         </Grid>
       )}
+
+      <Dialog
+        open={showLoginNotice}
+        onClose={() => setShowLoginNotice(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Login Diperlukan</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Anda harus login terlebih dahulu untuk membuka buku ini.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setShowLoginNotice(false)}
+            variant="contained"
+            color="primary"
+          >
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

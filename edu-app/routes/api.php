@@ -21,6 +21,7 @@ Route::delete('/users/{id}', [UserController::class, 'destroy']);
 Route::post('/users/give-book-access', [UserController::class, 'giveBookAccess']);
 Route::post('/users/remove-book-access', [UserController::class, 'removeBookAccess']);
 Route::get('/users/{id}/books', [UserController::class, 'listUserBooks']);
+Route::post('/users/sync-book-access', [UserController::class, 'syncBookAccess']);
 
 Route::get('/books', [BookController::class, 'index']);
 Route::get('/books/{id}', [BookController::class, 'show']);
