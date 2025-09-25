@@ -1,11 +1,28 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Box, Button, Typography, Divider, Stack } from "@mui/material";
-import { logout } from "../../services/authService";
+import {
+  Box,
+  Button,
+  Typography,
+  Divider,
+  Stack,
+  Collapse,
+} from "@mui/material";
+import { ExpandLess, ExpandMore } from "@mui/icons-material";
+import { logout, getCurrentUser } from "../../services/authService";
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [user, setUser] = useState(null);
+  const [adminOpen, setAdminOpen] = useState(false);
+
+  useEffect(() => {
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser);
+    }
+  }, []);
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -52,8 +69,7 @@ export default function Sidebar() {
       {/* Navigation */}
       <Stack spacing={1} flex={1} mt={2}>
         <Button
-          variant={isActive("/books") ? "contained" : "text"}
-          color="primary"
+          variant="text"
           onClick={() => handleNavigation("/books")}
           sx={{
             justifyContent: "flex-start",
@@ -61,14 +77,14 @@ export default function Sidebar() {
             "&:hover": { bgcolor: "#3f536a" },
             borderRadius: 1,
             textTransform: "none",
+            color: "white",
           }}
         >
           Home
         </Button>
 
         <Button
-          variant={isActive("/account") ? "contained" : "text"}
-          color="primary"
+          variant="text"
           onClick={() => handleNavigation("/account")}
           sx={{
             justifyContent: "flex-start",
@@ -76,10 +92,70 @@ export default function Sidebar() {
             "&:hover": { bgcolor: "#3f536a" },
             borderRadius: 1,
             textTransform: "none",
+            color: "white",
           }}
         >
           Account
         </Button>
+
+        {/* Admin Section */}
+        {user?.role === "admin" && (
+          <>
+            <Button
+              variant="text"
+              onClick={() => setAdminOpen(!adminOpen)}
+              sx={{
+                justifyContent: "space-between",
+                bgcolor: adminOpen ? "#34495e" : "transparent",
+                "&:hover": { bgcolor: "#3f536a" },
+                borderRadius: 1,
+                textTransform: "none",
+                color: "white",
+              }}
+              endIcon={adminOpen ? <ExpandLess /> : <ExpandMore />}
+            >
+              Admin
+            </Button>
+
+            <Collapse in={adminOpen} timeout="auto" unmountOnExit>
+              <Stack spacing={1} sx={{ pl: 3 }}>
+                <Button
+                  variant="text"
+                  onClick={() => handleNavigation("/admin/users")}
+                  sx={{
+                    justifyContent: "flex-start",
+                    bgcolor: isActive("/admin/users")
+                      ? "#34495e"
+                      : "transparent",
+                    "&:hover": { bgcolor: "#3f536a" },
+                    borderRadius: 1,
+                    textTransform: "none",
+                    color: "white",
+                  }}
+                >
+                  Users
+                </Button>
+
+                <Button
+                  variant="text"
+                  onClick={() => handleNavigation("/admin/books")}
+                  sx={{
+                    justifyContent: "flex-start",
+                    bgcolor: isActive("/admin/books")
+                      ? "#34495e"
+                      : "transparent",
+                    "&:hover": { bgcolor: "#3f536a" },
+                    borderRadius: 1,
+                    textTransform: "none",
+                    color: "white",
+                  }}
+                >
+                  Books
+                </Button>
+              </Stack>
+            </Collapse>
+          </>
+        )}
       </Stack>
 
       <Divider sx={{ bgcolor: "#3f536a", my: 2 }} />

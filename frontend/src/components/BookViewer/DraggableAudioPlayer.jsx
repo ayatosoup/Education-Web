@@ -86,19 +86,6 @@ export default function DraggableAudioPlayer({ audioSrc }) {
     }
   };
 
-  // Optional debug function (comment out in production)
-  /*
-  const debugBlobContent = async () => {
-    try {
-      const response = await fetch(audioSrc);
-      const blob = await response.blob();
-      console.log("Blob info:", { size: blob.size, type: blob.type, url: audioSrc });
-    } catch (err) {
-      console.error("Blob debug error:", err);
-    }
-  };
-  */
-
   if (!audioSrc) return null;
 
   return (

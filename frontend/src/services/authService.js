@@ -18,8 +18,11 @@ export const login = async (email, password) => {
 
   localStorage.setItem("auth_token", data.token);
 
-  const { id, email: userEmail } = data.user;
-  localStorage.setItem("user", JSON.stringify({ id, email: userEmail }));
+  const { id, email: userEmail, role, name } = data.user;
+  localStorage.setItem(
+    "user",
+    JSON.stringify({ id, email: userEmail, role, name })
+  );
   return data;
 };
 

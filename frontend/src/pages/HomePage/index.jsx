@@ -91,7 +91,7 @@ export default function BookList() {
             label="Category"
             onChange={(e) => setSelectedCategory(e.target.value)}
           >
-            <MenuItem value="">None</MenuItem>
+            <MenuItem value="">All</MenuItem>
             {categories.map((cat) => (
               <MenuItem key={cat.id} value={cat.id}>
                 {cat.name}
