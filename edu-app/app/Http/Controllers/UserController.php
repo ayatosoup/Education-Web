@@ -125,18 +125,33 @@ class UserController extends Controller
     }
 
     // List all books a user can access
-    public function listUserBooks($userId)
-    {
-        $user = User::find($userId);
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => 'User not found'], 404);
-        }
-
-        $books = DB::table('book_user_access')
-            ->where('user_id', $userId)
-            ->pluck('book_id');
-
-        return response()->json(['success' => true, 'user_id' => $userId, 'books' => $books]);
+public function listUserBooks($userId)
+{
+    $user = User::find($userId);
+    if (!$user) {
+        return response()->json(['success' => false, 'message' => 'User not found'], 404);
     }
+
+    if ($user->role === 'admin') {
+        // Admins get all books directly
+        $books = DB::table('books')->get();
+    } else {
+        // Normal users get their accessible books
+        $books = DB::table('book_user_access')
+            ->join('books', 'book_user_access.book_id', '=', 'books.id')
+            ->where('book_user_access.user_id', $userId)
+            ->select('books.*')
+            ->get();
+    }
+
+    return response()->json([
+        'success' => true,
+        'user_id' => $userId,
+        'role'    => $user->role,
+        'books'   => $books
+    ]);
+}
+
+
 
 }
