@@ -37,13 +37,8 @@ Education-Web is a comprehensive platform designed to facilitate online learning
 After installation, open your web browser and navigate to `http://localhost:3000` to access the application. Follow the on-screen instructions to register and start using the platform.
 
 ## API Endpoints
-- `GET /api/courses` - Retrieve a list of courses
-- `POST /api/courses` - Create a new course
 - `GET /api/users` - Retrieve user information
 - `POST /api/login` - Authenticate a user
-
-<?php
-
 /**
  * @api {post} /login Login
  * @apiDescription Logs in a user and returns an authentication token.
