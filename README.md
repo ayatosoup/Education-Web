@@ -1,4 +1,3 @@
-<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/edad9d04-0953-4d9a-84fc-1bb27a9cf224" /># Education-Web
 Education Website for School
 
 ## Overview
