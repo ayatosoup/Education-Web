@@ -40,20 +40,20 @@ class BookController extends Controller
             ->get();
         
         $annotations = DB::table('annotations')
-                            ->where('book_id', $id)
-                            ->where('user_id', Auth::id())
-                            ->get(['page_number', 'annotation_paths'])
-                            ->keyBy('page_number') 
-                            ->map(function ($item) {
-                                return json_decode($item->annotation_paths, true);
-                            });
+            ->where('book_id', $id)
+            ->where('user_id', Auth::id())
+            ->get(['page_number', 'annotation_paths'])
+            ->keyBy('page_number')
+            ->map(function ($item) {
+                return json_decode($item->annotation_paths, true);
+            });
 
         $book->annotations = $annotations;
 
         return response()->json($book);
     }
 
-    // Upload a new book PDF and generate page images.
+    // Upload a new book PDF and generate page images (PNG).
     public function store(Request $request)
     {
         $request->validate([
@@ -93,14 +93,19 @@ class BookController extends Controller
             DB::table('books')->where('id', $bookId)
                 ->update(['original_file_path' => $pdfPath]);
 
-            // Convert each PDF page to a JPG image
-            $imagick = new \Imagick();
-            $imagick->setResolution(200, 200);
-            $imagick->readImage(Storage::disk('local')->path($pdfPath));
+            $localPdfPath = Storage::disk('local')->path($pdfPath);
 
-            foreach ($imagick as $index => $image) {
-                $pageNumber  = $index + 1;
-                $pageFile    = "page_{$pageNumber}.jpg";
+            // Use pingImage to get number of pages (more reliable)
+            $probe = new \Imagick();
+            $probe->pingImage($localPdfPath);
+            $numPages = $probe->getNumberImages();
+            $probe->clear();
+            $probe->destroy();
+
+            // Loop per page and read that page explicitly, save as PNG
+            for ($i = 0; $i < $numPages; $i++) {
+                $pageNumber  = $i + 1;
+                $pageFile    = "page_{$pageNumber}.png";
                 $pageFullPath = Storage::disk('local')->path("{$pagesFolder}/{$pageFile}");
 
                 $pageDirectory = dirname($pageFullPath);
@@ -108,8 +113,26 @@ class BookController extends Controller
                     mkdir($pageDirectory, 0755, true);
                 }
 
-                $image->setImageFormat('jpg');
-                $image->writeImage($pageFullPath);
+                $pageImagick = new \Imagick();
+                // set resolution before reading the page
+                $pageImagick->setResolution(300, 300);
+                // read single page
+                $pageImagick->readImage($localPdfPath . "[" . $i . "]");
+
+                // Flatten transparencies to white background and ensure RGB
+                $pageImagick->setImageBackgroundColor('white');
+                $flattened = $pageImagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+                $flattened->setImageColorspace(\Imagick::COLORSPACE_RGB);
+                $flattened->setImageFormat('png');
+
+                // Write PNG
+                $flattened->writeImage($pageFullPath);
+
+                // clean up imagick objects
+                $flattened->clear();
+                $flattened->destroy();
+                $pageImagick->clear();
+                $pageImagick->destroy();
 
                 DB::table('book_pages')->insert([
                     'book_id'     => $bookId,
@@ -119,9 +142,6 @@ class BookController extends Controller
                     'updated_at'  => now(),
                 ]);
             }
-
-            $imagick->clear();
-            $imagick->destroy();
 
             return response()->json([
                 'message' => 'Book uploaded successfully',
@@ -141,7 +161,7 @@ class BookController extends Controller
         }
     }
 
-    // Update book, optionally replace PDF and/or change category
+    // Update book, optionally replace PDF and/or change category (now PNG pages)
     public function update(Request $request, $id)
     {
         $request->validate([
@@ -184,13 +204,18 @@ class BookController extends Controller
                 $pdfPath = $file->storeAs($pdfFolder, $fileName, 'local');
                 $updateData['original_file_path'] = $pdfPath;
 
-                $imagick = new \Imagick();
-                $imagick->setResolution(200, 200);
-                $imagick->readImage(Storage::disk('local')->path($pdfPath));
+                $localPdfPath = Storage::disk('local')->path($pdfPath);
 
-                foreach ($imagick as $index => $image) {
-                    $pageNumber  = $index + 1;
-                    $pageFile    = "page_{$pageNumber}.jpg";
+                // probe number of pages
+                $probe = new \Imagick();
+                $probe->pingImage($localPdfPath);
+                $numPages = $probe->getNumberImages();
+                $probe->clear();
+                $probe->destroy();
+
+                for ($i = 0; $i < $numPages; $i++) {
+                    $pageNumber  = $i + 1;
+                    $pageFile    = "page_{$pageNumber}.png";
                     $pageFullPath = Storage::disk('local')->path("{$pagesFolder}/{$pageFile}");
 
                     $pageDirectory = dirname($pageFullPath);
@@ -198,8 +223,20 @@ class BookController extends Controller
                         mkdir($pageDirectory, 0755, true);
                     }
 
-                    $image->setImageFormat('jpg');
-                    $image->writeImage($pageFullPath);
+                    $pageImagick = new \Imagick();
+                    $pageImagick->setResolution(300, 300);
+                    $pageImagick->readImage($localPdfPath . "[" . $i . "]");
+
+                    $pageImagick->setImageBackgroundColor('white');
+                    $flattened = $pageImagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+                    $flattened->setImageColorspace(\Imagick::COLORSPACE_RGB);
+                    $flattened->setImageFormat('png');
+                    $flattened->writeImage($pageFullPath);
+
+                    $flattened->clear();
+                    $flattened->destroy();
+                    $pageImagick->clear();
+                    $pageImagick->destroy();
 
                     DB::table('book_pages')->insert([
                         'book_id'     => $id,
@@ -209,9 +246,6 @@ class BookController extends Controller
                         'updated_at'  => now(),
                     ]);
                 }
-
-                $imagick->clear();
-                $imagick->destroy();
             }
 
             // Handle optional page-specific audio/video
