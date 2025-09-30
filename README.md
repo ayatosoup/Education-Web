@@ -31,7 +31,7 @@ Education-Web is a comprehensive platform designed to facilitate online learning
     ```
 
 ## Usage
-After installation, open your web browser and navigate to `http://localhost:3000` to access the application. Follow the on-screen instructions to register and start using the platform.
+After installation, open your web browser and navigate to `http://127.0.0.1:8000` to access the application. Follow the on-screen instructions to register and start using the platform.
 
 ## API Endpoints
 - `GET /api/users` - Retrieve user information
