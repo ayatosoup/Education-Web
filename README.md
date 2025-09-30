@@ -1,4 +1,4 @@
-# Education-Web
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/edad9d04-0953-4d9a-84fc-1bb27a9cf224" /># Education-Web
 Education Website for School
 
 ## Overview
@@ -22,13 +22,13 @@ Education-Web is a comprehensive platform designed to facilitate online learning
 3. Install the required dependencies:
     ```bash
     npm install
-    ```
+    ```bash
     composer install
     ```
 4. Start the development server:
     ```bash
     npm start
-    ```
+    ```bash
     php artisan serve
     ```
 
