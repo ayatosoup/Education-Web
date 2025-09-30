@@ -5,11 +5,10 @@ Education Website for School
 Education-Web is a comprehensive platform designed to facilitate online learning for students and educators. It provides a user-friendly interface and a variety of resources to enhance the educational experience.
 
 ## Features
-- User registration and authentication
-- Course management system
-- Interactive quizzes and assessments
-- Discussion forums for student engagement
-- Resource library with downloadable materials
+- User authentication
+- Book management system
+- Resource library with prevented downloadable materials
+- Book player and editor
 
 ## Installation Steps
 1. Clone the repository:
