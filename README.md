@@ -22,13 +22,11 @@ Education-Web is a comprehensive platform designed to facilitate online learning
 3. Install the required dependencies:
     ```bash
     npm install
-    ```bash
     composer install
     ```
 4. Start the development server:
     ```bash
     npm start
-    ```bash
     php artisan serve
     ```
 
