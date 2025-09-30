@@ -9,6 +9,11 @@ import Sidebar from "./components/Sidebar";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
 import BookViewer from "./components/BookViewer";
+import AdminUsersPage from "./pages/Admin/AdminUsersPage";
+import AdminBooksPage from "./pages/Admin/AdminBooksPage";
+import AdminBookPagesPage from "./pages/Admin/AdminBookPagesPage";
+import CreateBookPage from "./pages/Admin/AdminCreateBook";
+import AccountDetailPage from "./pages/AccountDetailPage";
 
 function AppContent() {
   const location = useLocation();
@@ -33,6 +38,14 @@ function AppContent() {
           <Route path="/" element={<LoginPage />} />
           <Route path="/books" element={<HomePage />} />
           <Route path="/book/:id" element={<BookViewer />} />
+          <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/books" element={<AdminBooksPage />} />
+          <Route path="/admin/books/create" element={<CreateBookPage />} />
+          <Route
+            path="/admin/books/:bookId/pages"
+            element={<AdminBookPagesPage />}
+          />
+          <Route path="/account" element={<AccountDetailPage />} />
         </Routes>
       </main>
     </>

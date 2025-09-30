@@ -1,11 +1,20 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { getCurrentUser } from "../../services/authService";
 
 export default function Headbar() {
+  const [userName, setUserName] = useState("");
+
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user && user.name) {
+      setUserName(user.name);
+    }
+  }, []);
+
   return (
     <header style={styles.headbar}>
       <div style={styles.profile}>
-        <span style={styles.profileName}>John Doe</span>
-        <img src="/img/profile.jpg" alt="Profile" style={styles.profileImage} />
+        <span style={styles.profileName}>{userName || "Guest"}</span>
       </div>
     </header>
   );
@@ -29,17 +38,9 @@ const styles = {
   profile: {
     display: "flex",
     alignItems: "center",
-    gap: "10px",
-  },
-  profileImage: {
-    width: "40px",
-    height: "40px",
-    borderRadius: "50%",
-    objectFit: "cover",
   },
   profileName: {
     fontSize: "1rem",
     fontWeight: "500",
-    marginRight: "8px",
   },
 };
