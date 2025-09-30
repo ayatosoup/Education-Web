@@ -19,12 +19,14 @@ Education-Web is a comprehensive platform designed to facilitate online learning
     ```bash
     cd Education-Web
     ```
-3. Install the required dependencies:
+3. Install Composer and Npm:
     ```bash
     npm install
     composer install
     ```
-4. Start the development server:
+4. Install Dependencies
+   https://imagemagick.org/script/download.php#windows
+5. Start the development server:
     ```bash
     npm start
     php artisan serve
