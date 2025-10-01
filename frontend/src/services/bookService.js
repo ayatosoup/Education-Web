@@ -243,7 +243,6 @@ export const deleteTOCEntry = async (bookId, tocId) => {
   return data;
 };
 
-// --- Audio ---
 
 export const fetchAudio = async (bookId, audioPath) => {
   const fileName = audioPath.split("/").pop();

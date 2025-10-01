@@ -62,7 +62,6 @@ class BookController extends Controller
         $bookId = null;
 
         try {
-            // Buat record buku (tanpa path pdf)
             $bookId = DB::table('books')->insertGetId([
                 'title'       => $request->title,
                 'description' => $request->description,
@@ -74,11 +73,9 @@ class BookController extends Controller
             $bookFolder  = "book_{$bookId}";
             $pagesFolder = "{$bookFolder}/book_pages";
 
-            // PDF hanya dipakai sementara untuk convert ke image
             $pdf = $request->file('pdf_file');
-            $tmpPdf = $pdf->getPathname(); // path sementara
+            $tmpPdf = $pdf->getPathname();
 
-            // Hitung jumlah halaman
             $probe = new \Imagick();
             $probe->pingImage($tmpPdf);
             $numPages = $probe->getNumberImages();
@@ -142,6 +139,9 @@ class BookController extends Controller
             'description' => 'nullable|string',
             'pdf_file'    => 'nullable|mimes:pdf|max:10240',
             'category_id' => 'sometimes|required|integer|exists:categories,id',
+            'page_number' => 'nullable|integer|required_with:audio_file,video_link',
+            'audio_file'  => 'nullable|mimes:mp3,wav,m4a,ogg|max:20480',
+            'video_link'  => 'nullable|url|string|max:500',
         ]);
 
         $book = DB::table('books')->where('id', $id)->first();
@@ -150,8 +150,8 @@ class BookController extends Controller
         try {
             $updateData = $request->only(['title','description','category_id']);
 
+            // replace pages if new pdf uploaded
             if ($request->hasFile('pdf_file')) {
-                // hapus halaman lama
                 Storage::disk('local')->deleteDirectory("book_{$id}/book_pages");
                 DB::table('book_pages')->where('book_id',$id)->delete();
 
@@ -191,6 +191,43 @@ class BookController extends Controller
                         'created_at'  => now(),
                         'updated_at'  => now(),
                     ]);
+                }
+            }
+
+            // update audio/video for a page
+            if ($request->filled('page_number')) {
+                $page = DB::table('book_pages')
+                    ->where('book_id', $id)
+                    ->where('page_number', $request->page_number)
+                    ->first();
+
+                if (!$page) {
+                    return response()->json([
+                        'error' => "Page number {$request->page_number} not found"
+                    ], 404);
+                }
+
+                $pageUpdateData = [];
+
+                if ($request->hasFile('audio_file')) {
+                    if ($page->audio_path && Storage::disk('local')->exists($page->audio_path)) {
+                        Storage::disk('local')->delete($page->audio_path);
+                    }
+
+                    $audioFolder = "book_{$id}/audio_file";
+                    $audioFile  = $request->file('audio_file');
+                    $audioName  = 'page_' . $request->page_number . '_' . time() . '.' . $audioFile->getClientOriginalExtension();
+                    $path = $audioFile->storeAs($audioFolder, $audioName, 'local');
+                    $pageUpdateData['audio_path'] = $path;
+                }
+
+                if ($request->has('video_link')) {
+                    $pageUpdateData['video_link'] = $request->video_link;
+                }
+
+                if (!empty($pageUpdateData)) {
+                    $pageUpdateData['updated_at'] = now();
+                    DB::table('book_pages')->where('id', $page->id)->update($pageUpdateData);
                 }
             }
 
@@ -234,6 +271,17 @@ class BookController extends Controller
         $path = storage_path("app/private/book_{$book}/book_pages/{$filename}");
         if (!file_exists($path)) abort(404);
         return response()->file($path);
+    }
+
+    public function serveAudio($book, $filename)
+    {
+        $path = storage_path("app/private/book_{$book}/audio_file/{$filename}");
+        if (!file_exists($path)) {
+            return response()->json(['error'=>'Audio file not found'],404);
+        }
+        return response()->file($path, [
+            'Content-Type' => mime_content_type($path) ?: 'audio/mpeg'
+        ]);
     }
 
     public function listMyBooks(Request $request)
