@@ -12,24 +12,15 @@ class AdminMiddleware
     {
         $user = $request->user();
 
-        if (!$user) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized. Please login first.'
-                ], 401);
-            }
-            return redirect('/login');
-        }
-
-        if ($user->role !== 'admin') {
+        if (!$user || $user->role !== 'admin') {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Forbidden: Admin access only'
                 ], 403);
             }
-            return redirect('/books');
+
+            return response('Forbidden: Admin access only', 403);
         }
 
         return $next($request);

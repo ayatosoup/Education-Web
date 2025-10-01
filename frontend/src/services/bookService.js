@@ -2,6 +2,8 @@ import { getToken, getCurrentUser } from "./authService";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+// --- Public / Shared Endpoints ---
+
 export const getAllBooks = async () => {
   const response = await fetch(`${API_BASE_URL}/books`, {
     headers: {
@@ -28,14 +30,11 @@ export const getBookById = async (id) => {
 };
 
 export const getMyBooks = async () => {
-  // Get current user to check role
   const user = getCurrentUser();
 
   if (user && user.role === "admin") {
-    // Admins get all books
     return getAllBooks();
   } else {
-    // Regular users get their assigned books
     const response = await fetch(`${API_BASE_URL}/my-books`, {
       headers: {
         Accept: "application/json",
@@ -49,7 +48,7 @@ export const getMyBooks = async () => {
   }
 };
 
-// --- New Admin Book Management Functions ---
+// --- Admin Book Management ---
 
 export const createBook = async (bookData) => {
   const formData = new FormData();
@@ -61,7 +60,7 @@ export const createBook = async (bookData) => {
     formData.append("pdf_file", bookData.pdf_file);
   }
 
-  const response = await fetch(`${API_BASE_URL}/books`, {
+  const response = await fetch(`${API_BASE_URL}/admin/books`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${getToken()}`,
@@ -96,8 +95,8 @@ export const updateBook = async (id, bookData) => {
 
   formData.append("_method", "PUT");
 
-  const response = await fetch(`${API_BASE_URL}/books/${id}`, {
-    method: "POST",
+  const response = await fetch(`${API_BASE_URL}/admin/books/${id}`, {
+    method: "POST", // Laravel butuh spoofing
     headers: {
       Authorization: `Bearer ${getToken()}`,
     },
@@ -113,7 +112,7 @@ export const updateBook = async (id, bookData) => {
 };
 
 export const deleteBook = async (id) => {
-  const response = await fetch(`${API_BASE_URL}/books/${id}`, {
+  const response = await fetch(`${API_BASE_URL}/admin/books/${id}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${getToken()}`,
@@ -124,6 +123,8 @@ export const deleteBook = async (id) => {
   if (!response.ok) throw new Error(data.message || "Failed to delete book");
   return data;
 };
+
+// --- Categories ---
 
 export const getCategories = async () => {
   const response = await fetch(`${API_BASE_URL}/categories`, {
@@ -138,6 +139,47 @@ export const getCategories = async () => {
   return data;
 };
 
+// Admin-only categories
+export const createCategory = async (categoryData) => {
+  const res = await fetch(`${API_BASE_URL}/admin/categories`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify(categoryData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to create category");
+  return data;
+};
+
+export const updateCategory = async (id, categoryData) => {
+  const res = await fetch(`${API_BASE_URL}/admin/categories/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify(categoryData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to update category");
+  return data;
+};
+
+export const deleteCategory = async (id) => {
+  const res = await fetch(`${API_BASE_URL}/admin/categories/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to delete category");
+  return data;
+};
+
+// --- TOC ---
+
 export const fetchBookTOC = async (bookId) => {
   const res = await fetch(`${API_BASE_URL}/books/${bookId}/toc`, {
     headers: {
@@ -150,7 +192,7 @@ export const fetchBookTOC = async (bookId) => {
 };
 
 export const createTOCEntry = async (bookId, tocData) => {
-  const response = await fetch(`${API_BASE_URL}/books/${bookId}/toc`, {
+  const response = await fetch(`${API_BASE_URL}/admin/books/${bookId}/toc`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -166,14 +208,17 @@ export const createTOCEntry = async (bookId, tocData) => {
 };
 
 export const updateTOCEntry = async (bookId, tocId, tocData) => {
-  const response = await fetch(`${API_BASE_URL}/books/${bookId}/toc/${tocId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
-    },
-    body: JSON.stringify(tocData),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/admin/books/${bookId}/toc/${tocId}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify(tocData),
+    }
+  );
 
   const data = await response.json();
   if (!response.ok)
@@ -182,18 +227,23 @@ export const updateTOCEntry = async (bookId, tocId, tocData) => {
 };
 
 export const deleteTOCEntry = async (bookId, tocId) => {
-  const response = await fetch(`${API_BASE_URL}/books/${bookId}/toc/${tocId}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${getToken()}`,
-    },
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/admin/books/${bookId}/toc/${tocId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    }
+  );
 
   const data = await response.json();
   if (!response.ok)
     throw new Error(data.message || "Failed to delete TOC entry");
   return data;
 };
+
+// --- Audio ---
 
 export const fetchAudio = async (bookId, audioPath) => {
   const fileName = audioPath.split("/").pop();

@@ -15,9 +15,8 @@ import AdminBooksPage from "./pages/Admin/AdminBooksPage";
 import AdminBookPagesPage from "./pages/Admin/AdminBookPagesPage";
 import CreateBookPage from "./pages/Admin/AdminCreateBook";
 import AccountDetailPage from "./pages/AccountDetailPage";
-import { isAuthenticated } from "./services/authService";
+import { isAuthenticated, getCurrentUser } from "./services/authService";
 
-// Wrapper untuk halaman login/public
 function PublicRoute({ children }) {
   if (isAuthenticated()) {
     return <Navigate to="/books" replace />;
@@ -25,7 +24,7 @@ function PublicRoute({ children }) {
   return children;
 }
 
-// Wrapper untuk halaman private
+// Hanya untuk user yang sudah login
 function ProtectedRoute({ children }) {
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
@@ -33,9 +32,22 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+// Hanya untuk admin
+function AdminRoute({ children }) {
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
+  const user = getCurrentUser();
+  if (!user || user.role !== "admin") {
+    return <Navigate to="/books" replace />;
+  }
+  return children;
+}
+
 function AppContent() {
   const location = useLocation();
-  const isLoginPage = location.pathname === "/" || location.pathname === "/login";
+  const isLoginPage =
+    location.pathname === "/" || location.pathname === "/login";
   const isBookViewerPage = location.pathname.startsWith("/book/");
 
   const hideLayout = isLoginPage || isBookViewerPage;
@@ -53,7 +65,7 @@ function AppContent() {
         }}
       >
         <Routes>
-          {/* Public: login */}
+          {/* Public (guest only) */}
           <Route
             path="/"
             element={
@@ -71,7 +83,7 @@ function AppContent() {
             }
           />
 
-          {/* Protected: semua halaman setelah login */}
+          {/* Protected (user login) */}
           <Route
             path="/books"
             element={
@@ -89,43 +101,45 @@ function AppContent() {
             }
           />
           <Route
-            path="/admin/users"
-            element={
-              <ProtectedRoute>
-                <AdminUsersPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/books"
-            element={
-              <ProtectedRoute>
-                <AdminBooksPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/books/create"
-            element={
-              <ProtectedRoute>
-                <CreateBookPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/books/:bookId/pages"
-            element={
-              <ProtectedRoute>
-                <AdminBookPagesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/account"
             element={
               <ProtectedRoute>
                 <AccountDetailPage />
               </ProtectedRoute>
+            }
+          />
+
+          {/* Admin only */}
+          <Route
+            path="/admin/users"
+            element={
+              <AdminRoute>
+                <AdminUsersPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/books"
+            element={
+              <AdminRoute>
+                <AdminBooksPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/books/create"
+            element={
+              <AdminRoute>
+                <CreateBookPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/books/:bookId/pages"
+            element={
+              <AdminRoute>
+                <AdminBookPagesPage />
+              </AdminRoute>
             }
           />
         </Routes>

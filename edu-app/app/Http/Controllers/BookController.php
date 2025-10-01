@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Auth;
 
 class BookController extends Controller
 {
-    // Get all books with their category name, ordered by latest upload date.
     public function index()
     {
         $books = DB::table('books')
@@ -21,7 +20,6 @@ class BookController extends Controller
         return response()->json($books);
     }
 
-    // Get a single book, its pages, AND all its annotations for the user.
     public function show($id)
     {
         $book = DB::table('books')
@@ -38,22 +36,19 @@ class BookController extends Controller
             ->where('book_id', $id)
             ->orderBy('page_number', 'asc')
             ->get();
-        
+
         $annotations = DB::table('annotations')
             ->where('book_id', $id)
             ->where('user_id', Auth::id())
             ->get(['page_number', 'annotation_paths'])
             ->keyBy('page_number')
-            ->map(function ($item) {
-                return json_decode($item->annotation_paths, true);
-            });
+            ->map(fn($item) => json_decode($item->annotation_paths, true));
 
         $book->annotations = $annotations;
 
         return response()->json($book);
     }
 
-    // Upload a new book PDF and generate page images (PNG).
     public function store(Request $request)
     {
         $request->validate([
@@ -67,68 +62,47 @@ class BookController extends Controller
         $bookId = null;
 
         try {
-            // Insert the book first to get its ID
+            // Buat record buku (tanpa path pdf)
             $bookId = DB::table('books')->insertGetId([
-                'title'              => $request->title,
-                'description'        => $request->description,
-                'category_id'        => $request->category_id,
-                'original_file_path' => '',
-                'uploaded_by'        => $request->uploaded_by,
-                'upload_date'        => now(),
+                'title'       => $request->title,
+                'description' => $request->description,
+                'category_id' => $request->category_id,
+                'uploaded_by' => $request->uploaded_by,
+                'upload_date' => now(),
             ]);
 
             $bookFolder  = "book_{$bookId}";
-            $pdfFolder   = "{$bookFolder}/books";
             $pagesFolder = "{$bookFolder}/book_pages";
 
-            // Save the uploaded PDF
-            $file     = $request->file('pdf_file');
-            $baseName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-            $baseName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $baseName);
-            $fileName = time() . '_' . $baseName . '.pdf';
+            // PDF hanya dipakai sementara untuk convert ke image
+            $pdf = $request->file('pdf_file');
+            $tmpPdf = $pdf->getPathname(); // path sementara
 
-            $pdfPath = $file->storeAs($pdfFolder, $fileName, 'local');
-
-            // Update the record with the stored PDF path
-            DB::table('books')->where('id', $bookId)
-                ->update(['original_file_path' => $pdfPath]);
-
-            $localPdfPath = Storage::disk('local')->path($pdfPath);
-
-            // Use pingImage to get number of pages (more reliable)
+            // Hitung jumlah halaman
             $probe = new \Imagick();
-            $probe->pingImage($localPdfPath);
+            $probe->pingImage($tmpPdf);
             $numPages = $probe->getNumberImages();
             $probe->clear();
             $probe->destroy();
 
-            // Loop per page and read that page explicitly, save as PNG
             for ($i = 0; $i < $numPages; $i++) {
                 $pageNumber  = $i + 1;
                 $pageFile    = "page_{$pageNumber}.png";
                 $pageFullPath = Storage::disk('local')->path("{$pagesFolder}/{$pageFile}");
 
-                $pageDirectory = dirname($pageFullPath);
-                if (!is_dir($pageDirectory)) {
-                    mkdir($pageDirectory, 0755, true);
+                if (!is_dir(dirname($pageFullPath))) {
+                    mkdir(dirname($pageFullPath), 0755, true);
                 }
 
                 $pageImagick = new \Imagick();
-                // set resolution before reading the page
                 $pageImagick->setResolution(300, 300);
-                // read single page
-                $pageImagick->readImage($localPdfPath . "[" . $i . "]");
-
-                // Flatten transparencies to white background and ensure RGB
+                $pageImagick->readImage($tmpPdf . "[" . $i . "]");
                 $pageImagick->setImageBackgroundColor('white');
                 $flattened = $pageImagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
                 $flattened->setImageColorspace(\Imagick::COLORSPACE_RGB);
                 $flattened->setImageFormat('png');
-
-                // Write PNG
                 $flattened->writeImage($pageFullPath);
 
-                // clean up imagick objects
                 $flattened->clear();
                 $flattened->destroy();
                 $pageImagick->clear();
@@ -161,54 +135,31 @@ class BookController extends Controller
         }
     }
 
-    // Update book, optionally replace PDF and/or change category (now PNG pages)
     public function update(Request $request, $id)
     {
         $request->validate([
             'title'       => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
             'pdf_file'    => 'nullable|mimes:pdf|max:10240',
-            'page_number' => 'nullable|integer|required_with:audio_file,video_link',
-            'audio_file'  => 'nullable|mimes:mp3,wav,m4a,ogg|max:20480',
-            'video_link'  => 'nullable|url|string|max:500',
             'category_id' => 'sometimes|required|integer|exists:categories,id',
         ]);
 
         $book = DB::table('books')->where('id', $id)->first();
-
-        if (!$book) {
-            return response()->json(['error' => 'Book not found'], 404);
-        }
+        if (!$book) return response()->json(['error' => 'Book not found'], 404);
 
         try {
-            $updateData = $request->only(['title', 'description', 'category_id']);
+            $updateData = $request->only(['title','description','category_id']);
 
             if ($request->hasFile('pdf_file')) {
-                // Remove old PDF and page images
-                if ($book->original_file_path) {
-                    Storage::disk('local')->delete($book->original_file_path);
-                }
-
+                // hapus halaman lama
                 Storage::disk('local')->deleteDirectory("book_{$id}/book_pages");
-                DB::table('book_pages')->where('book_id', $id)->delete();
+                DB::table('book_pages')->where('book_id',$id)->delete();
 
-                $bookFolder  = "book_{$id}";
-                $pdfFolder   = "{$bookFolder}/books";
-                $pagesFolder = "{$bookFolder}/book_pages";
+                $pagesFolder = "book_{$id}/book_pages";
+                $tmpPdf = $request->file('pdf_file')->getPathname();
 
-                $file     = $request->file('pdf_file');
-                $baseName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-                $baseName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $baseName);
-                $fileName = time() . '_' . $baseName . '.pdf';
-
-                $pdfPath = $file->storeAs($pdfFolder, $fileName, 'local');
-                $updateData['original_file_path'] = $pdfPath;
-
-                $localPdfPath = Storage::disk('local')->path($pdfPath);
-
-                // probe number of pages
                 $probe = new \Imagick();
-                $probe->pingImage($localPdfPath);
+                $probe->pingImage($tmpPdf);
                 $numPages = $probe->getNumberImages();
                 $probe->clear();
                 $probe->destroy();
@@ -217,16 +168,11 @@ class BookController extends Controller
                     $pageNumber  = $i + 1;
                     $pageFile    = "page_{$pageNumber}.png";
                     $pageFullPath = Storage::disk('local')->path("{$pagesFolder}/{$pageFile}");
-
-                    $pageDirectory = dirname($pageFullPath);
-                    if (!is_dir($pageDirectory)) {
-                        mkdir($pageDirectory, 0755, true);
-                    }
+                    if (!is_dir(dirname($pageFullPath))) mkdir(dirname($pageFullPath), 0755, true);
 
                     $pageImagick = new \Imagick();
                     $pageImagick->setResolution(300, 300);
-                    $pageImagick->readImage($localPdfPath . "[" . $i . "]");
-
+                    $pageImagick->readImage($tmpPdf . "[" . $i . "]");
                     $pageImagick->setImageBackgroundColor('white');
                     $flattened = $pageImagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
                     $flattened->setImageColorspace(\Imagick::COLORSPACE_RGB);
@@ -248,143 +194,59 @@ class BookController extends Controller
                 }
             }
 
-            // Handle optional page-specific audio/video
-            if ($request->filled('page_number')) {
-                $page = DB::table('book_pages')
-                    ->where('book_id', $id)
-                    ->where('page_number', $request->page_number)
-                    ->first();
-
-                if (! $page) {
-                    return response()->json([
-                        'error' => 'Page number ' . $request->page_number . ' not found for this book.'
-                    ], 404);
-                }
-
-                $pageUpdateData = [];
-
-                if ($request->hasFile('audio_file')) {
-                    if ($page->audio_path && Storage::disk('local')->exists($page->audio_path)) {
-                        Storage::disk('local')->delete($page->audio_path);
-                    }
-
-                    $audioFolder = "book_{$id}/audio_file";
-                    $audioFile  = $request->file('audio_file');
-                    $audioName  = 'page_' . $request->page_number . '_' . time() . '.' . $audioFile->getClientOriginalExtension();
-                    $path = $audioFile->storeAs($audioFolder, $audioName, 'local');
-                    $pageUpdateData['audio_path'] = $path;
-                }
-
-                if ($request->has('video_link')) {
-                    $pageUpdateData['video_link'] = $request->video_link;
-                }
-
-                if (! empty($pageUpdateData)) {
-                    $pageUpdateData['updated_at'] = now();
-                    DB::table('book_pages')->where('id', $page->id)->update($pageUpdateData);
-                }
-            }
-
-            if (! empty($updateData)) {
-                DB::table('books')->where('id', $id)->update($updateData);
+            if (!empty($updateData)) {
+                DB::table('books')->where('id',$id)->update($updateData);
             }
 
             $updatedBook = DB::table('books')
-                ->join('categories', 'books.category_id', '=', 'categories.id')
-                ->select('books.*', 'categories.name as category_name')
-                ->where('books.id', $id)
+                ->join('categories','books.category_id','=','categories.id')
+                ->select('books.*','categories.name as category_name')
+                ->where('books.id',$id)
                 ->first();
 
-            return response()->json([
-                'message' => 'Book updated successfully',
-                'book'    => $updatedBook,
-            ]);
+            return response()->json(['message'=>'Book updated successfully','book'=>$updatedBook]);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Update failed: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['error'=>'Update failed: '.$e->getMessage()],500);
         }
     }
 
     public function destroy($id)
-{
-    $book = DB::table('books')->where('id', $id)->first();
+    {
+        $book = DB::table('books')->where('id',$id)->first();
+        if (!$book) return response()->json(['error'=>'Book not found'],404);
 
-    if (!$book) {
-        return response()->json(['error' => 'Book not found'], 404);
-    }
+        try {
+            Storage::disk('local')->deleteDirectory("book_{$id}");
+            DB::table('book_pages')->where('book_id',$id)->delete();
+            DB::table('book_user_access')->where('book_id',$id)->delete();
+            DB::table('annotations')->where('book_id',$id)->delete();
+            DB::table('books')->where('id',$id)->delete();
 
-    try {
-        if ($book->original_file_path && Storage::disk('local')->exists($book->original_file_path)) {
-            Storage::disk('local')->delete($book->original_file_path);
+            return response()->json(['message'=>'Book deleted successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['error'=>'Delete failed: '.$e->getMessage()],500);
         }
-
-        Storage::disk('local')->deleteDirectory("book_{$id}");
-
-        DB::table('book_pages')->where('book_id', $id)->delete();
-        DB::table('book_user_access')->where('book_id', $id)->delete();
-        DB::table('annotations')->where('book_id', $id)->delete();
-        DB::table('books')->where('id', $id)->delete();
-
-        return response()->json(['message' => 'Book deleted successfully']);
-
-    } catch (\Exception $e) {
-        return response()->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
     }
-}
 
-
-    public function servePage($book, $filename)
+    public function servePage($book,$filename)
     {
         $path = storage_path("app/private/book_{$book}/book_pages/{$filename}");
-
-        if (!file_exists($path)) {
-            abort(404);
-        }
-
+        if (!file_exists($path)) abort(404);
         return response()->file($path);
     }
 
     public function listMyBooks(Request $request)
     {
         $user = $request->user();
-
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthenticated'
-            ], 401);
-        }
+        if (!$user) return response()->json(['success'=>false,'message'=>'Unauthenticated'],401);
 
         $bookIds = DB::table('book_user_access')
-            ->where('user_id', $user->id)
+            ->where('user_id',$user->id)
             ->pluck('book_id')
             ->toArray();
 
-        $books = DB::table('books')
-            ->whereIn('id', $bookIds)
-            ->get();
-
+        $books = DB::table('books')->whereIn('id',$bookIds)->get();
         return response()->json($books);
-    }
-
-    public function serveAudio($book, $filename)
-    {
-        $path = storage_path("app/private/book_{$book}/audio_file/{$filename}");
-
-        if (!file_exists($path)) {
-            return response()->json(['error' => 'Audio file not found at: ' . $path], 404);
-        }
-
-        $mimeType = mime_content_type($path) ?: 'audio/mpeg';
-        $fileSize = filesize($path);
-
-        return response()->file($path, [
-            'Content-Type' => $mimeType,
-            'Content-Length' => $fileSize,
-            'Accept-Ranges' => 'bytes',
-            'Cache-Control' => 'public, max-age=3600'
-        ]);
     }
 }

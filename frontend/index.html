@@ -4,10 +4,40 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
+    <title>Aplikasi Buku Digital</title>
   </head>
   <body>
     <div id="root"></div>
+
+    <noscript>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          margin: 20px;
+          line-height: 1.6;
+          background: #f9f9f9;
+        }
+        .fallback {
+          padding: 20px;
+          border: 1px solid #ccc;
+          background: #fff;
+          border-radius: 6px;
+          max-width: 600px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .fallback h1 {
+          font-size: 22px;
+          margin-bottom: 10px;
+        }
+        .fallback ul {
+          padding-left: 20px;
+        }
+      </style>
+      <div class="fallback">
+        <p>Your Javascript is non active.</p>
+      </div>
+    </noscript>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

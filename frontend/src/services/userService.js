@@ -1,16 +1,26 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("auth_token");
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+};
+
 export const getUsers = async () => {
-  const res = await fetch(`${API_BASE_URL}/users`);
+  const res = await fetch(`${API_BASE_URL}/admin/users`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) throw new Error("Failed to fetch users");
   const data = await res.json();
   return data.data;
 };
 
 export const createUser = async (user) => {
-  const res = await fetch(`${API_BASE_URL}/users`, {
+  const res = await fetch(`${API_BASE_URL}/admin/users`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify(user),
   });
   const data = await res.json();
@@ -19,9 +29,9 @@ export const createUser = async (user) => {
 };
 
 export const updateUser = async (id, user) => {
-  const res = await fetch(`${API_BASE_URL}/users/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/admin/users/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify(user),
   });
   const data = await res.json();
@@ -30,8 +40,9 @@ export const updateUser = async (id, user) => {
 };
 
 export const deleteUser = async (id) => {
-  const res = await fetch(`${API_BASE_URL}/users/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/admin/users/${id}`, {
     method: "DELETE",
+    headers: getAuthHeaders(),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || "Failed to delete user");
@@ -39,7 +50,9 @@ export const deleteUser = async (id) => {
 };
 
 export const getUserBooks = async (userId) => {
-  const res = await fetch(`${API_BASE_URL}/users/${userId}/books`);
+  const res = await fetch(`${API_BASE_URL}/admin/users/${userId}/books`, {
+    headers: getAuthHeaders(),
+  });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || "Failed to fetch user books");
 
@@ -54,9 +67,9 @@ export const getUserBooks = async (userId) => {
 };
 
 export const giveBookAccess = async (userId, bookId) => {
-  const res = await fetch(`${API_BASE_URL}/users/give-book-access`, {
+  const res = await fetch(`${API_BASE_URL}/admin/users/give-book-access`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ user_id: userId, book_id: bookId }),
   });
   const data = await res.json();
@@ -65,9 +78,9 @@ export const giveBookAccess = async (userId, bookId) => {
 };
 
 export const removeBookAccess = async (userId, bookId) => {
-  const res = await fetch(`${API_BASE_URL}/users/remove-book-access`, {
+  const res = await fetch(`${API_BASE_URL}/admin/users/remove-book-access`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ user_id: userId, book_id: bookId }),
   });
   const data = await res.json();
