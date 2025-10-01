@@ -307,6 +307,34 @@ class BookController extends Controller
         }
     }
 
+    public function destroy($id)
+{
+    $book = DB::table('books')->where('id', $id)->first();
+
+    if (!$book) {
+        return response()->json(['error' => 'Book not found'], 404);
+    }
+
+    try {
+        if ($book->original_file_path && Storage::disk('local')->exists($book->original_file_path)) {
+            Storage::disk('local')->delete($book->original_file_path);
+        }
+
+        Storage::disk('local')->deleteDirectory("book_{$id}");
+
+        DB::table('book_pages')->where('book_id', $id)->delete();
+        DB::table('book_user_access')->where('book_id', $id)->delete();
+        DB::table('annotations')->where('book_id', $id)->delete();
+        DB::table('books')->where('id', $id)->delete();
+
+        return response()->json(['message' => 'Book deleted successfully']);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
+    }
+}
+
+
     public function servePage($book, $filename)
     {
         $path = storage_path("app/private/book_{$book}/book_pages/{$filename}");
