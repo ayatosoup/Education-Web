@@ -1,5 +1,4 @@
 ## EDU WEB
-## EDU WEB
 Education Website for School
 
 ## Overview
@@ -43,5 +42,4 @@ After installation, open your web browser and navigate to `http://127.0.0.1:8000
 
 
  
- */
-Route::delete('/books/{id}', [BookController::class, 'destroy']);
+
