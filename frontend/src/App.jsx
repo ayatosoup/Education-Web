@@ -3,6 +3,7 @@ import {
   Routes,
   Route,
   useLocation,
+  Navigate,
 } from "react-router-dom";
 import Headbar from "./components/Headbar";
 import Sidebar from "./components/Sidebar";
@@ -14,10 +15,27 @@ import AdminBooksPage from "./pages/Admin/AdminBooksPage";
 import AdminBookPagesPage from "./pages/Admin/AdminBookPagesPage";
 import CreateBookPage from "./pages/Admin/AdminCreateBook";
 import AccountDetailPage from "./pages/AccountDetailPage";
+import { isAuthenticated } from "./services/authService";
+
+// Wrapper untuk halaman login/public
+function PublicRoute({ children }) {
+  if (isAuthenticated()) {
+    return <Navigate to="/books" replace />;
+  }
+  return children;
+}
+
+// Wrapper untuk halaman private
+function ProtectedRoute({ children }) {
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
 
 function AppContent() {
   const location = useLocation();
-  const isLoginPage = location.pathname === "/";
+  const isLoginPage = location.pathname === "/" || location.pathname === "/login";
   const isBookViewerPage = location.pathname.startsWith("/book/");
 
   const hideLayout = isLoginPage || isBookViewerPage;
@@ -35,17 +53,81 @@ function AppContent() {
         }}
       >
         <Routes>
-          <Route path="/" element={<LoginPage />} />
-          <Route path="/books" element={<HomePage />} />
-          <Route path="/book/:id" element={<BookViewer />} />
-          <Route path="/admin/users" element={<AdminUsersPage />} />
-          <Route path="/admin/books" element={<AdminBooksPage />} />
-          <Route path="/admin/books/create" element={<CreateBookPage />} />
+          {/* Public: login */}
+          <Route
+            path="/"
+            element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            }
+          />
+
+          {/* Protected: semua halaman setelah login */}
+          <Route
+            path="/books"
+            element={
+              <ProtectedRoute>
+                <HomePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/book/:id"
+            element={
+              <ProtectedRoute>
+                <BookViewer />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute>
+                <AdminUsersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/books"
+            element={
+              <ProtectedRoute>
+                <AdminBooksPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/books/create"
+            element={
+              <ProtectedRoute>
+                <CreateBookPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/admin/books/:bookId/pages"
-            element={<AdminBookPagesPage />}
+            element={
+              <ProtectedRoute>
+                <AdminBookPagesPage />
+              </ProtectedRoute>
+            }
           />
-          <Route path="/account" element={<AccountDetailPage />} />
+          <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <AccountDetailPage />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </main>
     </>
