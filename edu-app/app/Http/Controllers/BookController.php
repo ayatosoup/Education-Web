@@ -273,14 +273,36 @@ class BookController extends Controller
         return response()->file($path);
     }
 
-    public function serveAudio($book, $filename)
+    public function serveAudio(Request $request, $book, $filenameWithoutExt)
     {
-        $path = storage_path("app/private/book_{$book}/audio_file/{$filename}");
-        if (!file_exists($path)) {
-            return response()->json(['error'=>'Audio file not found'],404);
+        if ($request->header('X-Requested-With') !== 'XMLHttpRequest') {
+            return response()->json(['error' => 'Forbidden'], 403);
         }
-        return response()->file($path, [
-            'Content-Type' => mime_content_type($path) ?: 'audio/mpeg'
+
+        $user = $request->user();
+        if (!$user) return response()->json(['error' => 'Unauthenticated'], 401);
+
+        $audioFolder = storage_path("app/private/book_{$book}/audio_file/");
+        $audioPath = null;
+        $extensions = ['mp3','wav','m4a','ogg'];
+        foreach ($extensions as $ext) {
+            $p = $audioFolder . $filenameWithoutExt . '.' . $ext;
+            if (file_exists($p)) { $audioPath = $p; break; }
+        }
+        if (!$audioPath) {
+            return response()->json(['error'=>'Audio not found'], 404);
+        }
+
+        return response()->stream(function() use ($audioPath) {
+            $handle = fopen($audioPath, 'rb');
+            while (!feof($handle)) {
+                echo fread($handle, 1024 * 8);
+                flush();
+            }
+            fclose($handle);
+        }, 200, [
+            'Content-Type' => 'application/octet-stream',
+            'Cache-Control' => 'no-store, private, max-age=0',
         ]);
     }
 
