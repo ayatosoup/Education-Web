@@ -243,13 +243,18 @@ export const deleteTOCEntry = async (bookId, tocId) => {
   return data;
 };
 
-
 export const fetchAudio = async (bookId, audioPath) => {
-  const fileName = audioPath.split("/").pop();
-  const url = `${API_BASE_URL}/books/audio/${bookId}/${fileName}`;
+  const fullFileName = audioPath.split("/").pop();
+  const fileNameWithoutExt = fullFileName.split(".").slice(0, -1).join(".");
+  const url = `${API_BASE_URL}/books/audio/${bookId}/${fileNameWithoutExt}`;
+
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${getToken()}` },
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+      "X-Requested-With": "XMLHttpRequest",
+    },
   });
+
   if (!res.ok) throw new Error(`Failed to fetch audio: ${res.status}`);
   return await res.blob();
 };
