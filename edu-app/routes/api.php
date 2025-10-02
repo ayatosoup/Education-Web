@@ -11,13 +11,13 @@ use App\Http\Controllers\AnnotationsController;
 use App\Http\Controllers\UserBookPageController;
 
 Route::post('/login', [AuthController::class, 'login']);
-Route::get('/books/pages/{book}/{filename}', [BookController::class, 'servePage']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('/books', [BookController::class, 'index']);
     Route::get('/books/{id}', [BookController::class, 'show']);
+    Route::get('/books/pages/{book}/{filename}', [BookController::class, 'servePage']);
     Route::get('/books/audio/{book}/{filename}', [BookController::class, 'serveAudio']);
     Route::get('/my-books', [BookController::class, 'listMyBooks']);
     Route::get('/books/{book}/toc', [BookTocController::class, 'index']);
