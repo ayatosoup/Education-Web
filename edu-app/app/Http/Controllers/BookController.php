@@ -209,6 +209,14 @@ class BookController extends Controller
 
                 $pageUpdateData = [];
 
+                // Hapus audio jika diminta
+                if ($request->boolean('remove_audio')) {
+                    if ($page->audio_path && Storage::disk('local')->exists($page->audio_path)) {
+                        Storage::disk('local')->delete($page->audio_path);
+                    }
+                    $pageUpdateData['audio_path'] = null;
+                }
+
                 if ($request->hasFile('audio_file')) {
                     if ($page->audio_path && Storage::disk('local')->exists($page->audio_path)) {
                         Storage::disk('local')->delete($page->audio_path);

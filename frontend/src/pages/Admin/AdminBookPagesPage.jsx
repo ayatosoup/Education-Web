@@ -25,6 +25,7 @@ import {
   AudioFile,
   VideoLibrary,
   MenuBook,
+  Delete,
 } from "@mui/icons-material";
 import {
   getBookById,
@@ -117,7 +118,7 @@ export default function AdminBookPagesPage() {
 
         updateData.video_link = editForm.video_link;
 
-        const result = await updateBook(bookId, updateData);
+        await updateBook(bookId, updateData);
       }
 
       // Handle TOC
@@ -149,12 +150,27 @@ export default function AdminBookPagesPage() {
     }
   };
 
+  const handleDeleteAudio = async (pageNumber) => {
+    if (!window.confirm("Are you sure you want to delete this audio file?"))
+      return;
+    try {
+      await updateBook(bookId, {
+        page_number: pageNumber,
+        remove_audio: true,
+      });
+      await fetchData();
+    } catch (err) {
+      console.error("Delete audio error:", err);
+      setError(`Failed to delete audio: ${err.message}`);
+    }
+  };
+
   const handleCancel = () => {
     setEditingPage(null);
     setEditForm({ audio_file: null, video_link: "", toc_title: "" });
   };
 
-  // Generate all pages based on bookDetails.pages or assume sequential numbering
+  // Generate all pages
   const allPages = bookDetails?.pages || [];
   const maxPageNumber = Math.max(...allPages.map((p) => p.page_number), 0);
   const pageNumbers = Array.from({ length: maxPageNumber }, (_, i) => i + 1);
@@ -165,10 +181,9 @@ export default function AdminBookPagesPage() {
         Manage Pages – {bookDetails?.title}
       </Typography>
       <Typography variant="subtitle1" color="text.secondary" mb={3}>
-        Edit audio files, video links, and table of contents for each page.
+        Edit, delete audio, update video links, and manage table of contents.
       </Typography>
 
-      {/* Loading / Error */}
       {loading && (
         <Box display="flex" justifyContent="center" mt={5}>
           <CircularProgress />
@@ -180,7 +195,6 @@ export default function AdminBookPagesPage() {
         </Box>
       )}
 
-      {/* Pages Table */}
       {!loading && (
         <TableContainer component={Paper}>
           <Table>
@@ -219,13 +233,26 @@ export default function AdminBookPagesPage() {
                             sx={{ fontSize: 12 }}
                           />
                           {pageData?.audio_path && (
-                            <Typography
-                              variant="caption"
-                              display="block"
-                              color="text.secondary"
+                            <Box
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="space-between"
+                              mt={1}
                             >
-                              Current: {pageData.audio_path.split("/").pop()}
-                            </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                Current: {pageData.audio_path.split("/").pop()}
+                              </Typography>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleDeleteAudio(pageNumber)}
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </Box>
                           )}
                         </Box>
                       ) : pageData?.audio_path ? (

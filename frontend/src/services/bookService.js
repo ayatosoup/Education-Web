@@ -86,17 +86,24 @@ export const updateBook = async (id, bookData) => {
   if (bookData.page_number !== undefined) {
     formData.append("page_number", bookData.page_number);
 
+    // jika user upload audio baru
     if (bookData.audio_file) {
       formData.append("audio_file", bookData.audio_file);
     }
 
+    // jika user ingin menghapus audio
+    if (bookData.remove_audio !== undefined) {
+      formData.append("remove_audio", bookData.remove_audio ? "1" : "0");
+    }
+
+    // video link tetap dikirim (bisa kosong)
     formData.append("video_link", bookData.video_link || "");
   }
 
   formData.append("_method", "PUT");
 
   const response = await fetch(`${API_BASE_URL}/admin/books/${id}`, {
-    method: "POST", // Laravel butuh spoofing
+    method: "POST",
     headers: {
       Authorization: `Bearer ${getToken()}`,
     },
