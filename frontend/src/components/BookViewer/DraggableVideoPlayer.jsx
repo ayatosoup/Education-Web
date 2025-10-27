@@ -1,15 +1,25 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Box, IconButton } from "@mui/material";
 import { PlayCircleOutline, Close } from "@mui/icons-material";
+import { updateUserPlayerPosition } from "../../services/bookService";
+import { getCurrentUser } from "../../services/authService";
 
-export default function DraggableVideoPlayer({ videoUrl }) {
+export default function DraggableVideoPlayer({
+  videoUrl,
+  bookId,
+  pageNumber,
+  initialPosition,
+  isAdminMode = false,
+  onPositionChange,
+}) {
   const playerRef = useRef(null);
-
   const [isExpanded, setIsExpanded] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [position, setPosition] = useState({ x: 50, y: 50 });
+  const [position, setPosition] = useState(initialPosition || { x: 50, y: 50 });
   const [dragging, setDragging] = useState(false);
+  const [hasDragged, setHasDragged] = useState(false);
   const offset = useRef({ x: 0, y: 0 });
+  const saveTimeoutRef = useRef(null);
 
   const getEmbedUrl = (url) => {
     let videoId = "";
@@ -26,9 +36,55 @@ export default function DraggableVideoPlayer({ videoUrl }) {
     }
   };
 
+  useEffect(() => {
+    if (initialPosition) {
+      setPosition(initialPosition);
+    }
+  }, [initialPosition]);
+
+  useEffect(() => {
+    if (!dragging && position) {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      saveTimeoutRef.current = setTimeout(async () => {
+        try {
+          if (isAdminMode) {
+            if (onPositionChange) {
+              onPositionChange({ video_position: position });
+            }
+          } else {
+            const currentUser = getCurrentUser();
+            if (currentUser && currentUser.role !== "admin") {
+              await updateUserPlayerPosition(bookId, pageNumber, {
+                video_position: position,
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Failed to save video position:", err);
+        }
+      }, 500);
+    }
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [dragging, position, bookId, pageNumber, isAdminMode, onPositionChange]);
+
   const handleMouseDown = (e) => {
     e.stopPropagation();
+
+    const currentUser = getCurrentUser();
+    if (!isAdminMode && currentUser && currentUser.role === "admin") {
+      return;
+    }
+
     setDragging(true);
+    setHasDragged(false);
     const rect = playerRef.current?.getBoundingClientRect();
     if (!rect) return;
     offset.current = {
@@ -40,6 +96,7 @@ export default function DraggableVideoPlayer({ videoUrl }) {
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!dragging) return;
+      setHasDragged(true);
       const parentRect =
         playerRef.current?.parentElement?.getBoundingClientRect();
       if (!parentRect) return;
@@ -61,12 +118,33 @@ export default function DraggableVideoPlayer({ videoUrl }) {
     };
   }, [dragging]);
 
-  // Reset when video changes
   useEffect(() => {
     setIsExpanded(false);
     setPlaying(false);
-    setPosition({ x: 50, y: 50 });
-  }, [videoUrl]);
+    if (!initialPosition) {
+      setPosition({ x: 50, y: 50 });
+    }
+  }, [videoUrl, initialPosition]);
+
+  const currentUser = getCurrentUser();
+  const isAdminViewer =
+    !isAdminMode && currentUser && currentUser.role === "admin";
+
+  const handleIconClick = (e) => {
+    e.stopPropagation();
+    if (!hasDragged) {
+      setIsExpanded(true);
+    }
+    setHasDragged(false);
+  };
+
+  const handleVideoAreaClick = (e) => {
+    e.stopPropagation();
+    if (!hasDragged) {
+      setPlaying(true);
+    }
+    setHasDragged(false);
+  };
 
   if (!isExpanded) {
     return (
@@ -78,11 +156,13 @@ export default function DraggableVideoPlayer({ videoUrl }) {
           top: position.y,
           left: position.x,
           zIndex: 999,
-          cursor: dragging ? "grabbing" : "grab",
+          cursor: isAdminViewer ? "default" : dragging ? "grabbing" : "grab",
+          border: isAdminMode ? "2px solid yellow" : "none",
+          borderRadius: "50%",
         }}
       >
         <IconButton
-          onClick={() => setIsExpanded(true)}
+          onClick={handleIconClick}
           sx={{
             color: "white",
             backgroundColor: "rgba(0,0,0,0.6)",
@@ -106,11 +186,12 @@ export default function DraggableVideoPlayer({ videoUrl }) {
         width: 320,
         height: 180,
         zIndex: 999,
-        cursor: dragging ? "grabbing" : "grab",
+        cursor: isAdminViewer ? "default" : dragging ? "grabbing" : "grab",
         bgcolor: "black",
         borderRadius: 2,
         overflow: "hidden",
         boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+        border: isAdminMode ? "2px solid yellow" : "none",
       }}
     >
       {!playing ? (
@@ -125,10 +206,7 @@ export default function DraggableVideoPlayer({ videoUrl }) {
             fontSize: 50,
             cursor: "pointer",
           }}
-          onClick={(e) => {
-            e.stopPropagation();
-            setPlaying(true);
-          }}
+          onClick={handleVideoAreaClick}
         >
           <PlayCircleOutline fontSize="inherit" />
         </Box>

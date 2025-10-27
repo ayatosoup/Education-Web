@@ -9,6 +9,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\BookTocController;
 use App\Http\Controllers\AnnotationsController;
 use App\Http\Controllers\UserBookPageController;
+use App\Http\Controllers\PlayerPositionController; 
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/books/pages/{book}/{filename}', [BookController::class, 'servePage']);
@@ -37,6 +38,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::get('/categories/{id}', [CategoryController::class, 'show']);
 
+    Route::post('/books/{bookId}/pages/{pageNumber}/player-position', 
+        [PlayerPositionController::class, 'updateUserPosition']);
+    Route::get('/books/{bookId}/pages/{pageNumber}/player-position', 
+        [PlayerPositionController::class, 'getPagePositions']);
+
     Route::get('/user', fn(Request $request) => $request->user());
 });
 
@@ -61,4 +67,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/books/{book}/toc', [BookTocController::class, 'store']);
     Route::put('/books/{book}/toc/{toc}', [BookTocController::class, 'update']);
     Route::delete('/books/{book}/toc/{toc}', [BookTocController::class, 'destroy']);
+
+    Route::post('/books/{bookId}/pages/{pageNumber}/default-player-position', 
+        [PlayerPositionController::class, 'updateDefaultPosition']);
 });

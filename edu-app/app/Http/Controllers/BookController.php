@@ -46,6 +46,40 @@ class BookController extends Controller
 
         $book->annotations = $annotations;
 
+        $defaultPositions = DB::table('book_page_player_positions')
+            ->where('book_id', $id)
+            ->get(['page_number', 'audio_position', 'video_position'])
+            ->keyBy('page_number')
+            ->map(function($item) {
+                return [
+                    'audio' => $item->audio_position ? json_decode($item->audio_position, true) : null,
+                    'video' => $item->video_position ? json_decode($item->video_position, true) : null,
+                ];
+            });
+
+        $userPositions = DB::table('user_book_page_player_positions')
+            ->where('book_id', $id)
+            ->where('user_id', Auth::id())
+            ->get(['page_number', 'audio_position', 'video_position'])
+            ->keyBy('page_number')
+            ->map(function($item) {
+                return [
+                    'audio' => $item->audio_position ? json_decode($item->audio_position, true) : null,
+                    'video' => $item->video_position ? json_decode($item->video_position, true) : null,
+                ];
+            });
+
+        $playerPositions = [];
+        foreach ($book->pages as $page) {
+            $pageNum = $page->page_number;
+            $playerPositions[$pageNum] = [
+                'audio' => $userPositions[$pageNum]['audio'] ?? $defaultPositions[$pageNum]['audio'] ?? ['x' => 20, 'y' => 20],
+                'video' => $userPositions[$pageNum]['video'] ?? $defaultPositions[$pageNum]['video'] ?? ['x' => 50, 'y' => 50],
+            ];
+        }
+
+        $book->playerPositions = $playerPositions;
+
         return response()->json($book);
     }
 
@@ -266,6 +300,8 @@ class BookController extends Controller
             DB::table('book_pages')->where('book_id',$id)->delete();
             DB::table('book_user_access')->where('book_id',$id)->delete();
             DB::table('annotations')->where('book_id',$id)->delete();
+            DB::table('book_page_player_positions')->where('book_id',$id)->delete();
+            DB::table('user_book_page_player_positions')->where('book_id',$id)->delete();
             DB::table('books')->where('id',$id)->delete();
 
             return response()->json(['message'=>'Book deleted successfully']);

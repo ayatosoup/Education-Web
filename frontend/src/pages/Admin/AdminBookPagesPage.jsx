@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -26,6 +26,7 @@ import {
   VideoLibrary,
   MenuBook,
   Delete,
+  Adjust,
 } from "@mui/icons-material";
 import {
   getBookById,
@@ -38,10 +39,13 @@ import {
 
 export default function AdminBookPagesPage() {
   const { bookId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [bookDetails, setBookDetails] = useState(null);
   const [tocEntries, setTocEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const [editingPage, setEditingPage] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -69,7 +73,13 @@ export default function AdminBookPagesPage() {
 
   useEffect(() => {
     fetchData();
-  }, [bookId]);
+
+    if (location.state?.message) {
+      setSuccessMessage(location.state.message);
+      setTimeout(() => setSuccessMessage(""), 3000);
+      window.history.replaceState({}, document.title);
+    }
+  }, [bookId, location.state]);
 
   const getTOCForPage = (pageNumber) => {
     return tocEntries.find((toc) => toc.page_number === pageNumber);
@@ -165,6 +175,18 @@ export default function AdminBookPagesPage() {
     }
   };
 
+  const handleOpenPositionModal = (pageNumber) => {
+    const pageData = getPageData(pageNumber);
+    if (!pageData) return;
+
+    if (pageData.audio_path || pageData.video_link) {
+      navigate(`/admin/books/${bookId}/pages/${pageNumber}/position`);
+    } else {
+      setError("This page has no audio or video to position");
+      setTimeout(() => setError(""), 3000);
+    }
+  };
+
   const handleCancel = () => {
     setEditingPage(null);
     setEditForm({ audio_file: null, video_link: "", toc_title: "" });
@@ -181,12 +203,18 @@ export default function AdminBookPagesPage() {
         Manage Pages – {bookDetails?.title}
       </Typography>
       <Typography variant="subtitle1" color="text.secondary" mb={3}>
-        Edit, delete audio, update video links, and manage table of contents.
+        Edit, delete audio, update video links, manage table of contents, and
+        set player positions.
       </Typography>
 
       {loading && (
         <Box display="flex" justifyContent="center" mt={5}>
           <CircularProgress />
+        </Box>
+      )}
+      {successMessage && (
+        <Box mt={2}>
+          <Alert severity="success">{successMessage}</Alert>
         </Box>
       )}
       {error && (
@@ -212,6 +240,8 @@ export default function AdminBookPagesPage() {
                 const pageData = getPageData(pageNumber);
                 const tocData = getTOCForPage(pageNumber);
                 const isEditing = editingPage === pageNumber;
+                const hasMediaToPosition =
+                  pageData?.audio_path || pageData?.video_link;
 
                 return (
                   <TableRow key={pageNumber}>
@@ -346,13 +376,28 @@ export default function AdminBookPagesPage() {
                           </IconButton>
                         </Box>
                       ) : (
-                        <IconButton
-                          color="primary"
-                          onClick={() => handleEdit(pageNumber)}
-                          size="small"
-                        >
-                          <Edit />
-                        </IconButton>
+                        <Box>
+                          <IconButton
+                            color="primary"
+                            onClick={() => handleEdit(pageNumber)}
+                            size="small"
+                            title="Edit page"
+                          >
+                            <Edit />
+                          </IconButton>
+                          {hasMediaToPosition && (
+                            <IconButton
+                              color="secondary"
+                              onClick={() =>
+                                handleOpenPositionModal(pageNumber)
+                              }
+                              size="small"
+                              title="Set player positions"
+                            >
+                              <Adjust />
+                            </IconButton>
+                          )}
+                        </Box>
                       )}
                     </TableCell>
                   </TableRow>

@@ -16,6 +16,7 @@ import AdminBookPagesPage from "./pages/Admin/AdminBookPagesPage";
 import CreateBookPage from "./pages/Admin/AdminCreateBook";
 import AccountDetailPage from "./pages/AccountDetailPage";
 import { isAuthenticated, getCurrentUser } from "./services/authService";
+import AdminPlayerPositionPage from "./pages/Admin/AdminPlayerPositionPage";
 
 function PublicRoute({ children }) {
   if (isAuthenticated()) {
@@ -141,6 +142,10 @@ function AppContent() {
                 <AdminBookPagesPage />
               </AdminRoute>
             }
+          />
+          <Route
+            path="/admin/books/:id/pages/:pageNumber/position"
+            element={<AdminPlayerPositionPage />}
           />
         </Routes>
       </main>

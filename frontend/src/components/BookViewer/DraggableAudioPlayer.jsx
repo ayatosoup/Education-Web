@@ -1,17 +1,26 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Box, IconButton } from "@mui/material";
 import { PlayArrow, Pause } from "@mui/icons-material";
+import { updateUserPlayerPosition } from "../../services/bookService";
+import { getCurrentUser } from "../../services/authService";
 
-export default function DraggableAudioPlayer({ audioSrc }) {
+export default function DraggableAudioPlayer({
+  audioSrc,
+  bookId,
+  pageNumber,
+  initialPosition,
+  isAdminMode = false,
+  onPositionChange,
+}) {
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState(null);
   const audioRef = useRef(null);
   const containerRef = useRef(null);
-  const [position, setPosition] = useState({ x: 20, y: 20 });
+  const [position, setPosition] = useState(initialPosition || { x: 20, y: 20 });
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
+  const saveTimeoutRef = useRef(null);
 
-  // Audio event listeners
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -40,9 +49,53 @@ export default function DraggableAudioPlayer({ audioSrc }) {
     };
   }, [audioSrc]);
 
-  // Drag handlers
+  useEffect(() => {
+    if (initialPosition) {
+      setPosition(initialPosition);
+    }
+  }, [initialPosition]);
+
+  useEffect(() => {
+    if (!dragging && position) {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      saveTimeoutRef.current = setTimeout(async () => {
+        try {
+          if (isAdminMode) {
+            if (onPositionChange) {
+              onPositionChange({ audio_position: position });
+            }
+          } else {
+            const currentUser = getCurrentUser();
+            if (currentUser && currentUser.role !== "admin") {
+              await updateUserPlayerPosition(bookId, pageNumber, {
+                audio_position: position,
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Failed to save audio position:", err);
+        }
+      }, 500);
+    }
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [dragging, position, bookId, pageNumber, isAdminMode, onPositionChange]);
+
   const handleMouseDown = (e) => {
-    if (e.target.closest("button")) return; // Ignore clicks on buttons
+    if (e.target.closest("button")) return;
+
+    const currentUser = getCurrentUser();
+    if (!isAdminMode && currentUser && currentUser.role === "admin") {
+      return;
+    }
+
     setDragging(true);
     dragStart.current = {
       x: e.clientX - position.x,
@@ -60,7 +113,6 @@ export default function DraggableAudioPlayer({ audioSrc }) {
     let newX = e.clientX - dragStart.current.x;
     let newY = e.clientY - dragStart.current.y;
 
-    // Constrain inside parent
     newX = Math.max(0, Math.min(newX, parentRect.width - 200));
     newY = Math.max(0, Math.min(newY, parentRect.height - 50));
 
@@ -69,7 +121,6 @@ export default function DraggableAudioPlayer({ audioSrc }) {
 
   const handleMouseUp = () => setDragging(false);
 
-  // Toggle play/pause
   const togglePlay = async (e) => {
     e.stopPropagation();
     if (!audioRef.current) return;
@@ -88,6 +139,10 @@ export default function DraggableAudioPlayer({ audioSrc }) {
 
   if (!audioSrc) return null;
 
+  const currentUser = getCurrentUser();
+  const isAdminViewer =
+    !isAdminMode && currentUser && currentUser.role === "admin";
+
   return (
     <Box
       ref={containerRef}
@@ -101,10 +156,14 @@ export default function DraggableAudioPlayer({ audioSrc }) {
         borderRadius: 1,
         display: "flex",
         alignItems: "center",
-        cursor: dragging ? "grabbing" : "grab",
+        cursor: isAdminViewer ? "default" : dragging ? "grabbing" : "grab",
         userSelect: "none",
         zIndex: 100,
-        border: error ? "1px solid red" : "none",
+        border: error
+          ? "1px solid red"
+          : isAdminMode
+          ? "2px solid yellow"
+          : "none",
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -130,7 +189,7 @@ export default function DraggableAudioPlayer({ audioSrc }) {
       </IconButton>
 
       <Box sx={{ ml: 1, color: "white", fontSize: 12, flexGrow: 1 }}>
-        {error ? "Error" : "Audio"}
+        {error ? "Error" : isAdminMode ? "Audio (Admin)" : "Audio"}
       </Box>
 
       {error && <Box sx={{ color: "red", fontSize: 10, mt: 0.5 }}>{error}</Box>}

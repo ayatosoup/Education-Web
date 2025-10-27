@@ -265,3 +265,68 @@ export const fetchAudio = async (bookId, audioPath) => {
   if (!res.ok) throw new Error(`Failed to fetch audio: ${res.status}`);
   return await res.blob();
 };
+
+// --- Player Positions ---
+
+export const updateDefaultPlayerPosition = async (
+  bookId,
+  pageNumber,
+  positions
+) => {
+  const response = await fetch(
+    `${API_BASE_URL}/admin/books/${bookId}/pages/${pageNumber}/default-player-position`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify(positions),
+    }
+  );
+
+  const data = await response.json();
+  if (!response.ok)
+    throw new Error(data.message || "Failed to update default player position");
+  return data;
+};
+
+export const updateUserPlayerPosition = async (
+  bookId,
+  pageNumber,
+  positions
+) => {
+  const response = await fetch(
+    `${API_BASE_URL}/books/${bookId}/pages/${pageNumber}/player-position`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify(positions),
+    }
+  );
+
+  const data = await response.json();
+  if (!response.ok)
+    throw new Error(data.message || "Failed to save player position");
+  return data;
+};
+
+export const getPlayerPositions = async (bookId, pageNumber) => {
+  const response = await fetch(
+    `${API_BASE_URL}/books/${bookId}/pages/${pageNumber}/player-position`,
+    {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${getToken()}`,
+      },
+    }
+  );
+
+  const data = await response.json();
+  if (!response.ok)
+    throw new Error(data.message || "Failed to fetch player positions");
+  return data;
+};

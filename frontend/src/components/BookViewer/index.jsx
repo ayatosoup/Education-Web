@@ -35,6 +35,7 @@ export default function BookViewer() {
   const [eraserMode, setEraserMode] = useState(false);
   const [annotations, setAnnotations] = useState({});
   const [tocOpen, setTocOpen] = useState(false);
+  const [playerPositions, setPlayerPositions] = useState({});
 
   const canvasRefs = useRef({});
 
@@ -43,12 +44,15 @@ export default function BookViewer() {
       try {
         setLoading(true);
 
-        // fetch book and TOC
         const bookData = await getBookById(id);
         const tocData = await fetchBookTOC(id);
 
         setBook(bookData);
         setToc(tocData);
+
+        if (bookData.playerPositions) {
+          setPlayerPositions(bookData.playerPositions);
+        }
 
         const annotationsData = await getBookAnnotations(id);
 
@@ -187,6 +191,7 @@ export default function BookViewer() {
               drawingMode={drawingMode}
               eraserMode={eraserMode}
               canvasRefs={canvasRefs}
+              playerPositions={playerPositions} // NEW
             />
           ) : null
         )}

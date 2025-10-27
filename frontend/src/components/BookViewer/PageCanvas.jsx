@@ -13,6 +13,9 @@ export default function PageCanvas({
   drawingMode,
   eraserMode,
   canvasRefs,
+  playerPositions,
+  isAdminMode = false,
+  onPlayerPositionChange,
 }) {
   const { handleDrawStart, handleDrawMove, handleDrawEnd } = useDrawing({
     pageNum,
@@ -26,6 +29,8 @@ export default function PageCanvas({
 
   const [audioUrl, setAudioUrl] = useState("");
   const [isImageLoading, setIsImageLoading] = useState(true);
+  const audioPosition = playerPositions?.[pageNum]?.audio || { x: 20, y: 20 };
+  const videoPosition = playerPositions?.[pageNum]?.video || { x: 50, y: 50 };
 
   useEffect(() => {
     if (!page.audio_path) return;
@@ -116,12 +121,27 @@ export default function PageCanvas({
         }}
       />
 
-      {audioUrl && <DraggableAudioPlayer key={audioUrl} audioSrc={audioUrl} />}
+      {audioUrl && (
+        <DraggableAudioPlayer
+          key={`audio-${pageNum}`}
+          audioSrc={audioUrl}
+          bookId={bookId}
+          pageNumber={pageNum}
+          initialPosition={audioPosition}
+          isAdminMode={isAdminMode}
+          onPositionChange={isAdminMode ? onPlayerPositionChange : undefined}
+        />
+      )}
 
       {page.video_link && (
         <DraggableVideoPlayer
-          key={page.video_link}
+          key={`video-${pageNum}`}
           videoUrl={page.video_link}
+          bookId={bookId}
+          pageNumber={pageNum}
+          initialPosition={videoPosition}
+          isAdminMode={isAdminMode}
+          onPositionChange={isAdminMode ? onPlayerPositionChange : undefined}
         />
       )}
     </div>
