@@ -78,11 +78,6 @@ export default function DraggableVideoPlayer({
   const handleMouseDown = (e) => {
     e.stopPropagation();
 
-    const currentUser = getCurrentUser();
-    if (!isAdminMode && currentUser && currentUser.role === "admin") {
-      return;
-    }
-
     setDragging(true);
     setHasDragged(false);
     const rect = playerRef.current?.getBoundingClientRect();
@@ -156,7 +151,7 @@ export default function DraggableVideoPlayer({
           top: position.y,
           left: position.x,
           zIndex: 999,
-          cursor: isAdminViewer ? "default" : dragging ? "grabbing" : "grab",
+          cursor: dragging ? "grabbing" : "grab",
           border: isAdminMode ? "2px solid yellow" : "none",
           borderRadius: "50%",
         }}

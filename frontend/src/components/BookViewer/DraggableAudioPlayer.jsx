@@ -91,11 +91,6 @@ export default function DraggableAudioPlayer({
   const handleMouseDown = (e) => {
     if (e.target.closest("button")) return;
 
-    const currentUser = getCurrentUser();
-    if (!isAdminMode && currentUser && currentUser.role === "admin") {
-      return;
-    }
-
     setDragging(true);
     dragStart.current = {
       x: e.clientX - position.x,
@@ -156,7 +151,7 @@ export default function DraggableAudioPlayer({
         borderRadius: 1,
         display: "flex",
         alignItems: "center",
-        cursor: isAdminViewer ? "default" : dragging ? "grabbing" : "grab",
+        cursor: dragging ? "grabbing" : "grab",
         userSelect: "none",
         zIndex: 100,
         border: error
@@ -189,7 +184,7 @@ export default function DraggableAudioPlayer({
       </IconButton>
 
       <Box sx={{ ml: 1, color: "white", fontSize: 12, flexGrow: 1 }}>
-        {error ? "Error" : isAdminMode ? "Audio (Admin)" : "Audio"}
+        {"Audio"}
       </Box>
 
       {error && <Box sx={{ color: "red", fontSize: 10, mt: 0.5 }}>{error}</Box>}
