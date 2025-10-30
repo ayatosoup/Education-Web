@@ -43,7 +43,7 @@ export default function AdminUsersPage() {
     name: "",
     email: "",
     password: "",
-    role: "user",
+    role: "student",
   });
   const [editingUser, setEditingUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -87,7 +87,7 @@ export default function AdminUsersPage() {
         await createUser(form);
       }
       await fetchUsers();
-      setForm({ name: "", email: "", password: "", role: "user" });
+      setForm({ name: "", email: "", password: "", role: "student" });
       setEditingUser(null);
     } catch (err) {
       alert(err.message);
@@ -212,7 +212,12 @@ export default function AdminUsersPage() {
                 variant="outlined"
                 onClick={() => {
                   setEditingUser(null);
-                  setForm({ name: "", email: "", password: "", role: "user" });
+                  setForm({
+                    name: "",
+                    email: "",
+                    password: "",
+                    role: "student",
+                  });
                 }}
               >
                 Cancel
@@ -235,7 +240,6 @@ export default function AdminUsersPage() {
         />
       </Box>
 
-      {/* Loading / Error */}
       {loading && (
         <Box display="flex" justifyContent="center" mt={5}>
           <CircularProgress />

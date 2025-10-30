@@ -27,11 +27,10 @@ export default function BookList() {
     const fetchData = async () => {
       try {
         const [bookList, categoryList] = await Promise.all([
-          getMyBooks(), // only books the user can access
-          getAllCategories(), // categories for filter
+          getMyBooks(),
+          getAllCategories(),
         ]);
 
-        // fetch detailed info for each book (with pages and category)
         const detailedBooks = await Promise.all(
           bookList.map((book) => getBookById(book.id))
         );
@@ -59,20 +58,29 @@ export default function BookList() {
   });
 
   return (
-    <Box p={3}>
+    <Box p={{ xs: 2, sm: 3 }}>
       <Box mb={2}>
-        <Typography variant="h4" gutterBottom>
+        <Typography
+          variant="h4"
+          gutterBottom
+          sx={{ fontSize: { xs: "1.5rem", sm: "2rem" } }}
+        >
           Your Book Library
         </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
+        <Typography
+          variant="subtitle1"
+          color="text.secondary"
+          sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
+        >
           Browse your collection of books below.
         </Typography>
       </Box>
 
       <Box
         display="flex"
-        justifyContent="flex-end"
-        alignItems="center"
+        flexDirection={{ xs: "column", sm: "row" }}
+        justifyContent={{ sm: "flex-end" }}
+        alignItems={{ xs: "stretch", sm: "center" }}
         gap={2}
         mb={3}
       >
@@ -82,9 +90,15 @@ export default function BookList() {
           size="small"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          fullWidth={{ xs: true, sm: false }}
+          sx={{ minWidth: { sm: 200 } }}
         />
 
-        <FormControl size="small" sx={{ minWidth: 150 }}>
+        <FormControl
+          size="small"
+          fullWidth={{ xs: true, sm: false }}
+          sx={{ minWidth: { sm: 150 } }}
+        >
           <InputLabel>Category</InputLabel>
           <Select
             value={selectedCategory}
@@ -114,9 +128,9 @@ export default function BookList() {
       )}
 
       {!loading && !error && (
-        <Grid container spacing={2}>
+        <Grid container spacing={{ xs: 2, sm: 2, md: 3 }}>
           {filteredBooks.map((book) => (
-            <Grid item xs={6} sm={4} md={3} key={book.id}>
+            <Grid item xs={6} sm={4} md={3} lg={2.4} key={book.id}>
               <BookCard book={book} />
             </Grid>
           ))}

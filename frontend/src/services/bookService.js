@@ -2,8 +2,7 @@ import { getToken, getCurrentUser } from "./authService";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// --- Public / Shared Endpoints ---
-
+// Public
 export const getAllBooks = async () => {
   const response = await fetch(`${API_BASE_URL}/books`, {
     headers: {
@@ -48,7 +47,7 @@ export const getMyBooks = async () => {
   }
 };
 
-// --- Admin Book Management ---
+// Admin Book Management
 
 export const createBook = async (bookData) => {
   const formData = new FormData();
@@ -131,7 +130,7 @@ export const deleteBook = async (id) => {
   return data;
 };
 
-// --- Categories ---
+// Categories
 
 export const getCategories = async () => {
   const response = await fetch(`${API_BASE_URL}/categories`, {
@@ -185,7 +184,7 @@ export const deleteCategory = async (id) => {
   return data;
 };
 
-// --- TOC ---
+// TOC
 
 export const fetchBookTOC = async (bookId) => {
   const res = await fetch(`${API_BASE_URL}/books/${bookId}/toc`, {
@@ -266,7 +265,7 @@ export const fetchAudio = async (bookId, audioPath) => {
   return await res.blob();
 };
 
-// --- Player Positions ---
+// Player Positions
 
 export const updateDefaultPlayerPosition = async (
   bookId,

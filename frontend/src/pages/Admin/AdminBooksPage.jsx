@@ -85,7 +85,7 @@ export default function AdminBooksPage() {
       await updateBook(editingBook.id, {
         title: form.title,
         description: form.description,
-        category_id: form.category, // send ID
+        category_id: form.category || null,
       });
       await fetchBooks();
       setForm({ title: "", description: "", category: "" });
@@ -110,7 +110,7 @@ export default function AdminBooksPage() {
     setForm({
       title: book.title,
       description: book.description,
-      category: book.category_id, // use ID
+      category: book.category_id ?? "",
     });
   };
 
@@ -195,8 +195,10 @@ export default function AdminBooksPage() {
                   value={form.category}
                   label="Category"
                   onChange={handleChange}
-                  required
                 >
+                  <MenuItem value="">
+                    <em>None</em>
+                  </MenuItem>
                   {categories.map((cat) => (
                     <MenuItem key={cat.id} value={cat.id}>
                       {cat.name}
@@ -235,7 +237,6 @@ export default function AdminBooksPage() {
         />
       </Box>
 
-      {/* Loading / Error */}
       {loading && (
         <Box display="flex" justifyContent="center" mt={5}>
           <CircularProgress />

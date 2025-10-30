@@ -1,4 +1,3 @@
-// src/pages/admin/CreateBookPage.jsx
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -26,7 +25,6 @@ export default function CreateBookPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch categories for dropdown
   useEffect(() => {
     const fetchCategories = async () => {
       try {

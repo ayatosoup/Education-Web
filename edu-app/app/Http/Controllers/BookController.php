@@ -96,19 +96,32 @@ class BookController extends Controller
         $bookId = null;
 
         try {
+            // Store the PDF file first
+            $pdf = $request->file('pdf_file');
+            $bookFolder = "book_temp_" . time(); 
+            $pdfFileName = 'original.pdf';
+            $pdfPath = $pdf->storeAs($bookFolder, $pdfFileName, 'local');
+
             $bookId = DB::table('books')->insertGetId([
-                'title'       => $request->title,
-                'description' => $request->description,
-                'category_id' => $request->category_id,
-                'uploaded_by' => $request->uploaded_by,
-                'upload_date' => now(),
+                'title'              => $request->title,
+                'description'        => $request->description,
+                'category_id'        => $request->category_id,
+                'uploaded_by'        => $request->uploaded_by,
+                'original_file_path' => $pdfPath, 
+                'upload_date'        => now(),
             ]);
 
-            $bookFolder  = "book_{$bookId}";
-            $pagesFolder = "{$bookFolder}/book_pages";
+            $actualBookFolder = "book_{$bookId}";
+            $tempPath = Storage::disk('local')->path($bookFolder);
+            $actualPath = Storage::disk('local')->path($actualBookFolder);
+            rename($tempPath, $actualPath);
 
-            $pdf = $request->file('pdf_file');
-            $tmpPdf = $pdf->getPathname();
+            DB::table('books')->where('id', $bookId)->update([
+                'original_file_path' => "{$actualBookFolder}/{$pdfFileName}"
+            ]);
+
+            $pagesFolder = "{$actualBookFolder}/book_pages";
+            $tmpPdf = Storage::disk('local')->path("{$actualBookFolder}/{$pdfFileName}");
 
             $probe = new \Imagick();
             $probe->pingImage($tmpPdf);

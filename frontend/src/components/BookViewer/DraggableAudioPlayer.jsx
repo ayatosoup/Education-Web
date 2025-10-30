@@ -11,6 +11,7 @@ export default function DraggableAudioPlayer({
   initialPosition,
   isAdminMode = false,
   onPositionChange,
+  isMobile = false,
 }) {
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState(null);
@@ -88,33 +89,49 @@ export default function DraggableAudioPlayer({
     };
   }, [dragging, position, bookId, pageNumber, isAdminMode, onPositionChange]);
 
-  const handleMouseDown = (e) => {
+  const handleInteractionStart = (e) => {
     if (e.target.closest("button")) return;
+
+    const clientX = e.type.startsWith("touch")
+      ? e.touches[0].clientX
+      : e.clientX;
+    const clientY = e.type.startsWith("touch")
+      ? e.touches[0].clientY
+      : e.clientY;
 
     setDragging(true);
     dragStart.current = {
-      x: e.clientX - position.x,
-      y: e.clientY - position.y,
+      x: clientX - position.x,
+      y: clientY - position.y,
     };
     e.preventDefault();
   };
 
-  const handleMouseMove = (e) => {
+  const handleInteractionMove = (e) => {
     if (!dragging) return;
+
+    const clientX = e.type.startsWith("touch")
+      ? e.touches[0].clientX
+      : e.clientX;
+    const clientY = e.type.startsWith("touch")
+      ? e.touches[0].clientY
+      : e.clientY;
+
     const parent = containerRef.current?.parentElement;
     if (!parent) return;
 
     const parentRect = parent.getBoundingClientRect();
-    let newX = e.clientX - dragStart.current.x;
-    let newY = e.clientY - dragStart.current.y;
+    const playerWidth = isMobile ? 180 : 200;
+    let newX = clientX - dragStart.current.x;
+    let newY = clientY - dragStart.current.y;
 
-    newX = Math.max(0, Math.min(newX, parentRect.width - 200));
+    newX = Math.max(0, Math.min(newX, parentRect.width - playerWidth));
     newY = Math.max(0, Math.min(newY, parentRect.height - 50));
 
     setPosition({ x: newX, y: newY });
   };
 
-  const handleMouseUp = () => setDragging(false);
+  const handleInteractionEnd = () => setDragging(false);
 
   const togglePlay = async (e) => {
     e.stopPropagation();
@@ -145,8 +162,8 @@ export default function DraggableAudioPlayer({
         position: "absolute",
         top: position.y,
         left: position.x,
-        width: 200,
-        p: 1,
+        width: { xs: 90, sm: 130 },
+        p: { xs: 0.75, sm: 1 },
         bgcolor: "rgba(0,0,0,0.8)",
         borderRadius: 1,
         display: "flex",
@@ -159,11 +176,15 @@ export default function DraggableAudioPlayer({
           : isAdminMode
           ? "2px solid yellow"
           : "none",
+        touchAction: "none",
       }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      onMouseDown={handleInteractionStart}
+      onMouseMove={handleInteractionMove}
+      onMouseUp={handleInteractionEnd}
+      onMouseLeave={handleInteractionEnd}
+      onTouchStart={handleInteractionStart}
+      onTouchMove={handleInteractionMove}
+      onTouchEnd={handleInteractionEnd}
     >
       <audio ref={audioRef} preload="metadata" style={{ display: "none" }}>
         <source src={audioSrc} type="audio/mpeg" />
@@ -176,18 +197,33 @@ export default function DraggableAudioPlayer({
         onClick={togglePlay}
         sx={{
           color: "white",
-          p: 0.5,
+          p: { xs: 0.3, sm: 0.5 },
           "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
         }}
       >
-        {playing ? <Pause /> : <PlayArrow />}
+        {playing ? (
+          <Pause fontSize={isMobile ? "small" : "medium"} />
+        ) : (
+          <PlayArrow fontSize={isMobile ? "small" : "medium"} />
+        )}
       </IconButton>
 
-      <Box sx={{ ml: 1, color: "white", fontSize: 12, flexGrow: 1 }}>
+      <Box
+        sx={{
+          ml: 1,
+          color: "white",
+          fontSize: { xs: 10, sm: 12 },
+          flexGrow: 1,
+        }}
+      >
         {"Audio"}
       </Box>
 
-      {error && <Box sx={{ color: "red", fontSize: 10, mt: 0.5 }}>{error}</Box>}
+      {error && (
+        <Box sx={{ color: "red", fontSize: { xs: 9, sm: 10 }, mt: 0.5 }}>
+          {error}
+        </Box>
+      )}
     </Box>
   );
 }

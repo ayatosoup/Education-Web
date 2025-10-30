@@ -29,9 +29,10 @@ export default function LoginPage() {
       display="flex"
       justifyContent="center"
       alignItems="center"
-      height="100vh"
+      minHeight="100vh"
       bgcolor="#e0eafc"
-      p={2}
+      px={{ xs: 2, sm: 3 }}
+      py={{ xs: 3, sm: 4 }}
     >
       <LoginCard onLogin={handleLogin} loading={loading} error={error} />
     </Box>

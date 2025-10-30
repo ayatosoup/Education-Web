@@ -15,17 +15,13 @@ export default function BookCard({ book }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
-    // Display image on canvas with high resolution
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
-
     const dpr = window.devicePixelRatio || 1;
-
     const rect = canvas.getBoundingClientRect();
 
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
-
     context.scale(dpr, dpr);
 
     const image = new Image();
@@ -41,8 +37,9 @@ export default function BookCard({ book }) {
     <Link to={`/book/${book.id}`} style={{ textDecoration: "none" }}>
       <Card
         sx={{
-          width: 200,
-          height: 350,
+          width: "100%",
+          maxWidth: 200,
+          height: { xs: 280, sm: 350 },
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
@@ -54,15 +51,16 @@ export default function BookCard({ book }) {
             transform: "scale(1.02)",
             boxShadow: 4,
           },
+          mx: "auto",
         }}
       >
         <Box
           component="canvas"
           ref={canvasRef}
-          width={200}
-          height={250}
           sx={{
             display: "block",
+            width: "100%",
+            height: { xs: 180, sm: 250 },
             flexShrink: 0,
             pointerEvents: "none",
           }}
@@ -73,12 +71,22 @@ export default function BookCard({ book }) {
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
+            p: { xs: 1.5, sm: 2 },
           }}
         >
-          <Typography variant="h6" noWrap>
+          <Typography
+            variant="h6"
+            noWrap
+            sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
+          >
             {book.title}
           </Typography>
-          <Typography variant="body2" color="text.secondary" noWrap>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            noWrap
+            sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+          >
             {book.category_name}
           </Typography>
         </CardContent>

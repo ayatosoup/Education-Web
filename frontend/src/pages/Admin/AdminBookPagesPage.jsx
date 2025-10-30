@@ -131,7 +131,6 @@ export default function AdminBookPagesPage() {
         await updateBook(bookId, updateData);
       }
 
-      // Handle TOC
       const existingTOC = getTOCForPage(pageNumber);
       if (editForm.toc_title && editForm.toc_title.trim()) {
         const tocData = {

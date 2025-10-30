@@ -21,14 +21,19 @@ export default function LoginCard({ onLogin, loading, error }) {
     <Paper
       elevation={3}
       sx={{
-        p: 4,
-        maxWidth: 360,
+        p: { xs: 3, sm: 4 },
+        maxWidth: 400,
         width: "100%",
         textAlign: "center",
         borderRadius: 2,
       }}
     >
-      <Typography variant="h4" component="h1" gutterBottom>
+      <Typography
+        variant="h4"
+        component="h1"
+        gutterBottom
+        sx={{ fontSize: { xs: "1.75rem", sm: "2.125rem" } }}
+      >
         Edu-Web
       </Typography>
 
@@ -52,6 +57,7 @@ export default function LoginCard({ onLogin, loading, error }) {
           onChange={(e) => setEmail(e.target.value)}
           required
           disabled={loading}
+          fullWidth
         />
         <TextField
           label="Password"
@@ -60,12 +66,15 @@ export default function LoginCard({ onLogin, loading, error }) {
           onChange={(e) => setPassword(e.target.value)}
           required
           disabled={loading}
+          fullWidth
         />
         <Button
           type="submit"
           variant="contained"
           color="primary"
           disabled={loading}
+          fullWidth
+          sx={{ py: { xs: 1, sm: 1.25 } }}
         >
           {loading ? "Logging in..." : "Login"}
         </Button>

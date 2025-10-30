@@ -11,8 +11,10 @@ export default function DraggableVideoPlayer({
   initialPosition,
   isAdminMode = false,
   onPositionChange,
+  isMobile = false,
 }) {
   const playerRef = useRef(null);
+  const containerCheckRef = useRef(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState(initialPosition || { x: 50, y: 50 });
@@ -36,11 +38,47 @@ export default function DraggableVideoPlayer({
     }
   };
 
+  const constrainPosition = (pos, expanded = isExpanded) => {
+    if (!playerRef.current?.parentElement) return pos;
+
+    const parentRect = playerRef.current.parentElement.getBoundingClientRect();
+    const playerWidth = isMobile ? (expanded ? 280 : 48) : expanded ? 320 : 48;
+    const playerHeight = isMobile ? (expanded ? 158 : 48) : expanded ? 180 : 48;
+
+    return {
+      x: Math.max(0, Math.min(pos.x, parentRect.width - playerWidth)),
+      y: Math.max(0, Math.min(pos.y, parentRect.height - playerHeight)),
+    };
+  };
+
   useEffect(() => {
     if (initialPosition) {
       setPosition(initialPosition);
     }
   }, [initialPosition]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerCheckRef.current) {
+        clearTimeout(containerCheckRef.current);
+      }
+
+      containerCheckRef.current = setTimeout(() => {
+        setPosition((prev) => constrainPosition(prev));
+      }, 100);
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    handleResize();
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (containerCheckRef.current) {
+        clearTimeout(containerCheckRef.current);
+      }
+    };
+  }, [isMobile, isExpanded]);
 
   useEffect(() => {
     if (!dragging && position) {
@@ -75,43 +113,77 @@ export default function DraggableVideoPlayer({
     };
   }, [dragging, position, bookId, pageNumber, isAdminMode, onPositionChange]);
 
-  const handleMouseDown = (e) => {
+  const handleInteractionStart = (e) => {
     e.stopPropagation();
+
+    const clientX = e.type.startsWith("touch")
+      ? e.touches[0].clientX
+      : e.clientX;
+    const clientY = e.type.startsWith("touch")
+      ? e.touches[0].clientY
+      : e.clientY;
 
     setDragging(true);
     setHasDragged(false);
     const rect = playerRef.current?.getBoundingClientRect();
     if (!rect) return;
     offset.current = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: clientX - rect.left,
+      y: clientY - rect.top,
     };
   };
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
+    const handleInteractionMove = (e) => {
       if (!dragging) return;
       setHasDragged(true);
+
+      const clientX = e.type === "touchmove" ? e.touches[0].clientX : e.clientX;
+      const clientY = e.type === "touchmove" ? e.touches[0].clientY : e.clientY;
+
       const parentRect =
         playerRef.current?.parentElement?.getBoundingClientRect();
       if (!parentRect) return;
-      setPosition({
-        x: e.clientX - parentRect.left - offset.current.x,
-        y: e.clientY - parentRect.top - offset.current.y,
-      });
+
+      const playerWidth = isMobile
+        ? isExpanded
+          ? 280
+          : 48
+        : isExpanded
+        ? 320
+        : 48;
+      const playerHeight = isMobile
+        ? isExpanded
+          ? 158
+          : 48
+        : isExpanded
+        ? 180
+        : 48;
+
+      let newX = clientX - parentRect.left - offset.current.x;
+      let newY = clientY - parentRect.top - offset.current.y;
+
+      newX = Math.max(0, Math.min(newX, parentRect.width - playerWidth));
+      newY = Math.max(0, Math.min(newY, parentRect.height - playerHeight));
+
+      setPosition({ x: newX, y: newY });
     };
 
-    const handleMouseUp = () => setDragging(false);
+    const handleInteractionEnd = () => setDragging(false);
 
     if (dragging) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
+      window.addEventListener("mousemove", handleInteractionMove);
+      window.addEventListener("mouseup", handleInteractionEnd);
+      window.addEventListener("touchmove", handleInteractionMove);
+      window.addEventListener("touchend", handleInteractionEnd);
     }
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("mousemove", handleInteractionMove);
+      window.removeEventListener("mouseup", handleInteractionEnd);
+      window.removeEventListener("touchmove", handleInteractionMove);
+      window.removeEventListener("touchend", handleInteractionEnd);
     };
-  }, [dragging]);
+  }, [dragging, isMobile, isExpanded]);
 
   useEffect(() => {
     setIsExpanded(false);
@@ -129,6 +201,9 @@ export default function DraggableVideoPlayer({
     e.stopPropagation();
     if (!hasDragged) {
       setIsExpanded(true);
+      setTimeout(() => {
+        setPosition((prev) => constrainPosition(prev, true));
+      }, 0);
     }
     setHasDragged(false);
   };
@@ -145,7 +220,8 @@ export default function DraggableVideoPlayer({
     return (
       <Box
         ref={playerRef}
-        onMouseDown={handleMouseDown}
+        onMouseDown={handleInteractionStart}
+        onTouchStart={handleInteractionStart}
         sx={{
           position: "absolute",
           top: position.y,
@@ -154,6 +230,7 @@ export default function DraggableVideoPlayer({
           cursor: dragging ? "grabbing" : "grab",
           border: isAdminMode ? "2px solid yellow" : "none",
           borderRadius: "50%",
+          touchAction: "none",
         }}
       >
         <IconButton
@@ -162,9 +239,10 @@ export default function DraggableVideoPlayer({
             color: "white",
             backgroundColor: "rgba(0,0,0,0.6)",
             "&:hover": { backgroundColor: "rgba(0,0,0,0.8)" },
+            p: { xs: 0.75, sm: 1 },
           }}
         >
-          <PlayCircleOutline sx={{ fontSize: 48 }} />
+          <PlayCircleOutline sx={{ fontSize: { xs: 36, sm: 48 } }} />
         </IconButton>
       </Box>
     );
@@ -173,13 +251,14 @@ export default function DraggableVideoPlayer({
   return (
     <Box
       ref={playerRef}
-      onMouseDown={handleMouseDown}
+      onMouseDown={handleInteractionStart}
+      onTouchStart={handleInteractionStart}
       sx={{
         position: "absolute",
         top: position.y,
         left: position.x,
-        width: 320,
-        height: 180,
+        width: { xs: 280, sm: 320 },
+        height: { xs: 158, sm: 180 },
         zIndex: 999,
         cursor: isAdminViewer ? "default" : dragging ? "grabbing" : "grab",
         bgcolor: "black",
@@ -187,6 +266,7 @@ export default function DraggableVideoPlayer({
         overflow: "hidden",
         boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
         border: isAdminMode ? "2px solid yellow" : "none",
+        touchAction: "none",
       }}
     >
       {!playing ? (
@@ -198,7 +278,7 @@ export default function DraggableVideoPlayer({
             justifyContent: "center",
             alignItems: "center",
             color: "white",
-            fontSize: 50,
+            fontSize: { xs: 40, sm: 50 },
             cursor: "pointer",
           }}
           onClick={handleVideoAreaClick}
@@ -227,9 +307,10 @@ export default function DraggableVideoPlayer({
               right: 5,
               color: "white",
               backgroundColor: "rgba(0,0,0,0.5)",
+              p: { xs: 0.5, sm: 0.75 },
             }}
           >
-            <Close />
+            <Close fontSize={isMobile ? "small" : "medium"} />
           </IconButton>
         </Box>
       )}

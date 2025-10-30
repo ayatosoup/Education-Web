@@ -7,15 +7,22 @@ import {
   Divider,
   Stack,
   Collapse,
+  Drawer,
+  IconButton,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
-import { ExpandLess, ExpandMore } from "@mui/icons-material";
+import { ExpandLess, ExpandMore, Menu as MenuIcon } from "@mui/icons-material";
 import { logout, getCurrentUser } from "../../services/authService";
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [user, setUser] = useState(null);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const currentUser = getCurrentUser();
@@ -26,6 +33,9 @@ export default function Sidebar() {
 
   const handleNavigation = (path) => {
     navigate(path);
+    if (isMobile) {
+      setMobileOpen(false);
+    }
   };
 
   const handleLogout = () => {
@@ -35,24 +45,18 @@ export default function Sidebar() {
 
   const isActive = (path) => location.pathname === path;
 
-  return (
+  const sidebarContent = (
     <Box
       sx={{
         width: 250,
         bgcolor: "#2c3e50",
         color: "white",
-        height: "100vh",
-        position: "fixed",
-        left: 0,
-        top: 0,
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         p: 2,
-        boxShadow: 2,
-        zIndex: 1000,
       }}
     >
-      {/* Logo */}
       <Typography
         variant="h5"
         sx={{
@@ -66,7 +70,6 @@ export default function Sidebar() {
         Edu-Web
       </Typography>
 
-      {/* Navigation */}
       <Stack spacing={1} flex={1} mt={2}>
         <Button
           variant="text"
@@ -98,7 +101,6 @@ export default function Sidebar() {
           Account
         </Button>
 
-        {/* Admin Section */}
         {user?.role === "admin" && (
           <>
             <Button
@@ -160,7 +162,6 @@ export default function Sidebar() {
 
       <Divider sx={{ bgcolor: "#3f536a", my: 2 }} />
 
-      {/* Logout Button */}
       <Button
         onClick={handleLogout}
         sx={{
@@ -173,5 +174,54 @@ export default function Sidebar() {
         Logout
       </Button>
     </Box>
+  );
+
+  return (
+    <>
+      {isMobile && (
+        <IconButton
+          onClick={() => setMobileOpen(true)}
+          sx={{
+            position: "fixed",
+            top: 16,
+            left: 16,
+            zIndex: 1100,
+            bgcolor: "#2c3e50",
+            color: "white",
+            "&:hover": { bgcolor: "#34495e" },
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
+      )}
+
+      {isMobile ? (
+        <Drawer
+          anchor="left"
+          open={mobileOpen}
+          onClose={() => setMobileOpen(false)}
+          sx={{
+            "& .MuiDrawer-paper": {
+              boxShadow: 2,
+            },
+          }}
+        >
+          {sidebarContent}
+        </Drawer>
+      ) : (
+        <Box
+          sx={{
+            position: "fixed",
+            left: 0,
+            top: 0,
+            height: "100vh",
+            boxShadow: 2,
+            zIndex: 1000,
+          }}
+        >
+          {sidebarContent}
+        </Box>
+      )}
+    </>
   );
 }

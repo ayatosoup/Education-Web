@@ -28,8 +28,14 @@ export default function useDrawing({
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
 
-    const clientX = event.clientX ?? event.touches[0].clientX;
-    const clientY = event.clientY ?? event.touches[0].clientY;
+    let clientX, clientY;
+    if (event.type.startsWith("touch")) {
+      clientX = event.touches[0]?.clientX ?? event.changedTouches[0]?.clientX;
+      clientY = event.touches[0]?.clientY ?? event.changedTouches[0]?.clientY;
+    } else {
+      clientX = event.clientX;
+      clientY = event.clientY;
+    }
 
     return {
       x: (clientX - rect.left) * scaleX,

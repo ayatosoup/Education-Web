@@ -30,7 +30,7 @@ const styles = {
     color: "white",
     position: "fixed",
     top: 0,
-    left: "250px",
+    left: 0,
     right: 0,
     height: "60px",
     zIndex: 999,

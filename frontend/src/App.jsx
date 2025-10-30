@@ -5,6 +5,7 @@ import {
   useLocation,
   Navigate,
 } from "react-router-dom";
+import { useTheme, useMediaQuery } from "@mui/material";
 import Headbar from "./components/Headbar";
 import Sidebar from "./components/Sidebar";
 import LoginPage from "./pages/LoginPage";
@@ -25,7 +26,6 @@ function PublicRoute({ children }) {
   return children;
 }
 
-// Hanya untuk user yang sudah login
 function ProtectedRoute({ children }) {
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
@@ -33,7 +33,6 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
-// Hanya untuk admin
 function AdminRoute({ children }) {
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
@@ -47,11 +46,16 @@ function AdminRoute({ children }) {
 
 function AppContent() {
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
   const isLoginPage =
     location.pathname === "/" || location.pathname === "/login";
   const isBookViewerPage = location.pathname.startsWith("/book/");
+  const isAdminPlayerPositionPage = location.pathname.includes("/position");
 
-  const hideLayout = isLoginPage || isBookViewerPage;
+  const hideLayout =
+    isLoginPage || isBookViewerPage || isAdminPlayerPositionPage;
 
   return (
     <>
@@ -59,14 +63,13 @@ function AppContent() {
       {!hideLayout && <Sidebar />}
       <main
         style={{
-          padding: hideLayout ? "0" : "20px",
-          marginLeft: hideLayout ? "0" : "250px",
+          padding: hideLayout ? "0" : isMobile ? "12px" : "20px",
+          marginLeft: hideLayout || isMobile ? "0" : "250px",
           marginTop: hideLayout ? "0" : "60px",
           minHeight: hideLayout ? "100vh" : "calc(100vh - 60px)",
         }}
       >
         <Routes>
-          {/* Public (guest only) */}
           <Route
             path="/"
             element={
@@ -84,7 +87,6 @@ function AppContent() {
             }
           />
 
-          {/* Protected (user login) */}
           <Route
             path="/books"
             element={
@@ -110,7 +112,6 @@ function AppContent() {
             }
           />
 
-          {/* Admin only */}
           <Route
             path="/admin/users"
             element={

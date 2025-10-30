@@ -19,16 +19,35 @@ export default function AccountDetailPage() {
 
   if (!user) {
     return (
-      <Box p={3}>
+      <Box p={{ xs: 2, sm: 3 }}>
         <Typography variant="h6">No user found. Please log in.</Typography>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ ml: 60, mt: 20, p: 3 }}>
-      <Paper sx={{ p: 4, maxWidth: 600 }}>
-        <Typography variant="h5" fontWeight="bold" gutterBottom>
+    <Box
+      sx={{
+        p: { xs: 2, sm: 3 },
+        display: "flex",
+        justifyContent: "center",
+        alignItems: { xs: "flex-start", sm: "center" },
+        minHeight: { sm: "calc(100vh - 60px)" },
+      }}
+    >
+      <Paper
+        sx={{
+          p: { xs: 2, sm: 3, md: 4 },
+          width: "100%",
+          maxWidth: 600,
+        }}
+      >
+        <Typography
+          variant="h5"
+          fontWeight="bold"
+          gutterBottom
+          sx={{ fontSize: { xs: "1.25rem", sm: "1.5rem" } }}
+        >
           Account Details
         </Typography>
         <Divider sx={{ mb: 3 }} />

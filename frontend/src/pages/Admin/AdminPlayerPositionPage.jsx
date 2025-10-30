@@ -112,7 +112,6 @@ export default function AdminPlayerPositionPage() {
         bgcolor: "black",
       }}
     >
-      {/* Header Controls */}
       <Box
         sx={{
           position: "absolute",

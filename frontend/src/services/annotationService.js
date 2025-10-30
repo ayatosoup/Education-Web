@@ -2,7 +2,6 @@ import { getToken } from "./authService";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Get annotations for a specific page
 export const getPageAnnotations = async (bookId, pageNumber) => {
   const response = await fetch(
     `${API_BASE_URL}/books/${bookId}/annotations/${pageNumber}`,
@@ -21,7 +20,6 @@ export const getPageAnnotations = async (bookId, pageNumber) => {
   return data;
 };
 
-// Get all annotations for a book
 export const getBookAnnotations = async (bookId) => {
   const response = await fetch(`${API_BASE_URL}/books/${bookId}/annotations`, {
     headers: {
@@ -37,7 +35,6 @@ export const getBookAnnotations = async (bookId) => {
   return data;
 };
 
-// Save or update annotations for a page
 export const saveAnnotations = async (bookId, pageNumber, annotationPaths) => {
   const response = await fetch(`${API_BASE_URL}/books/${bookId}/annotations`, {
     method: "POST",
@@ -59,7 +56,6 @@ export const saveAnnotations = async (bookId, pageNumber, annotationPaths) => {
   return data;
 };
 
-// Clear annotations for a specific page
 export const clearPageAnnotations = async (bookId, pageNumber) => {
   const response = await fetch(
     `${API_BASE_URL}/books/${bookId}/annotations/${pageNumber}`,
@@ -79,7 +75,6 @@ export const clearPageAnnotations = async (bookId, pageNumber) => {
   return data;
 };
 
-// Clear all annotations for a book
 export const clearBookAnnotations = async (bookId) => {
   const response = await fetch(`${API_BASE_URL}/books/${bookId}/annotations`, {
     method: "DELETE",
@@ -96,7 +91,6 @@ export const clearBookAnnotations = async (bookId) => {
   return data;
 };
 
-// Delete a specific annotation path
 export const deleteAnnotationPath = async (bookId, pageNumber, pathIndex) => {
   const response = await fetch(
     `${API_BASE_URL}/books/${bookId}/annotations/${pageNumber}/path`,

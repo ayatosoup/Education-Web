@@ -16,6 +16,7 @@ export default function PageCanvas({
   playerPositions,
   isAdminMode = false,
   onPlayerPositionChange,
+  isMobile = false,
 }) {
   const { handleDrawStart, handleDrawMove, handleDrawEnd } = useDrawing({
     pageNum,
@@ -108,16 +109,22 @@ export default function PageCanvas({
         onMouseMove={handleDrawMove}
         onMouseUp={handleDrawEnd}
         onMouseLeave={handleDrawEnd}
+        onTouchStart={handleDrawStart}
+        onTouchMove={handleDrawMove}
+        onTouchEnd={handleDrawEnd}
         style={{
-          borderRadius: 8,
+          borderRadius: isMobile ? 4 : 8,
           boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
-          maxHeight: "90vh",
-          maxWidth: "45vw",
+          maxHeight: isMobile ? "75vh" : "90vh",
+          maxWidth: isMobile ? "90vw" : "45vw",
+          width: "auto",
+          height: "auto",
           backgroundColor: "transparent",
           display: "block",
           cursor: getCursorStyle(),
           opacity: isImageLoading ? 0 : 1,
           transition: "opacity 0.4s ease-in-out",
+          touchAction: drawingMode ? "none" : "auto",
         }}
       />
 
@@ -130,6 +137,7 @@ export default function PageCanvas({
           initialPosition={audioPosition}
           isAdminMode={isAdminMode}
           onPositionChange={isAdminMode ? onPlayerPositionChange : undefined}
+          isMobile={isMobile}
         />
       )}
 
@@ -142,6 +150,7 @@ export default function PageCanvas({
           initialPosition={videoPosition}
           isAdminMode={isAdminMode}
           onPositionChange={isAdminMode ? onPlayerPositionChange : undefined}
+          isMobile={isMobile}
         />
       )}
     </div>
