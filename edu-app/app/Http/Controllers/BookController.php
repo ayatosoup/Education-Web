@@ -96,7 +96,6 @@ class BookController extends Controller
         $bookId = null;
 
         try {
-            // Store the PDF file first
             $pdf = $request->file('pdf_file');
             $bookFolder = "book_temp_" . time(); 
             $pdfFileName = 'original.pdf';
@@ -197,7 +196,6 @@ class BookController extends Controller
         try {
             $updateData = $request->only(['title','description','category_id']);
 
-            // replace pages if new pdf uploaded
             if ($request->hasFile('pdf_file')) {
                 Storage::disk('local')->deleteDirectory("book_{$id}/book_pages");
                 DB::table('book_pages')->where('book_id',$id)->delete();
@@ -256,7 +254,6 @@ class BookController extends Controller
 
                 $pageUpdateData = [];
 
-                // Hapus audio jika diminta
                 if ($request->boolean('remove_audio')) {
                     if ($page->audio_path && Storage::disk('local')->exists($page->audio_path)) {
                         Storage::disk('local')->delete($page->audio_path);
